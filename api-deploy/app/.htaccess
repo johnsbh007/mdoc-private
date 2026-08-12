@@ -1,0 +1,2 @@
+# Block direct web access to application internals (config.php contains DB credentials)
+Require all denied

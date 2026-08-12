@@ -1,0 +1,591 @@
+openapi: 3.0.3
+info:
+  title: mDoc Citizen API
+  version: 1.0.0
+  description: |
+    API for the mDoc PWA (citizen-facing).
+    All endpoints return JSON. Auth via Bearer token (JWT).
+
+    IMPLEMENTATION STATUS (2026-08-11):
+    - LIVE: /auth/*, /doc-types, /doc-items*, /hierarchy
+    - STUB (501): /documents*, /documents/{id}/pay-qr, /payments/callback, download, receipt
+servers:
+  - url: https://mdoc.apis.com.la/api/v1
+    description: Production (LIVE since 2026-08-11)
+  - url: http://localhost:8000/api/v1
+    description: Local dev (PHP built-in server)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    # ---------- Auth ----------
+    LoginRequest:
+      type: object
+      required: [phone, password]
+      properties:
+        phone:
+          type: string
+          pattern: '^(\+856|0)20\d{8}$'
+          example: "02055551234"
+        password:
+          type: string
+          format: password
+          example: "secret123"
+    RegisterRequest:
+      type: object
+      required: [phone, password, full_name, village_id]
+      properties:
+        phone:
+          type: string
+          pattern: '^(\+856|0)20\d{8}$'
+        password:
+          type: string
+          format: password
+          minLength: 8
+        full_name:
+          type: string
+          example: "ສົມຈິດ ວົງຊາຍ"
+        village_id:
+          type: integer
+          example: 42
+        id_card:
+          type: string
+          example: "001234567890"
+        dob:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F]
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT, 24h expiry
+        citizen:
+          $ref: '#/components/schemas/Citizen'
+
+    Citizen:
+      type: object
+      properties:
+        id: {type: integer}
+        phone: {type: string}
+        full_name: {type: string}
+        village_id: {type: integer}
+        village_name: {type: string}
+        tasseng_name: {type: string}
+        district_name: {type: string}
+        province_name: {type: string}
+
+    # ---------- Catalog ----------
+    DocType:
+      type: object
+      properties:
+        id: {type: integer}
+        doc_type_code: {type: string, example: "01"}
+        name_lo: {type: string}
+        name_en: {type: string}
+        is_active: {type: boolean}
+
+    DocItem:
+      type: object
+      properties:
+        id: {type: integer}
+        doc_type_id: {type: integer}
+        name: {type: string}
+        unit: {type: string}
+        price: {type: number, format: float}
+        is_active: {type: boolean}
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocField'
+
+    DocField:
+      type: object
+      properties:
+        id: {type: integer}
+        field_name: {type: string}
+        label_lo: {type: string}
+        field_type: {type: string, enum: [text, number, date, select, file, textarea]}
+        is_required: {type: boolean}
+        options: {type: string, description: 'JSON array for select type'}
+        validation_regex: {type: string}
+
+    # ---------- Application ----------
+    SubmitApplicationRequest:
+      type: object
+      required: [doc_item_id, form_data, village_id]
+      properties:
+        doc_item_id: {type: integer}
+        village_id: {type: integer}
+        form_data:
+          type: object
+          additionalProperties:
+            type: string
+
+    SubmitApplicationResponse:
+      type: object
+      properties:
+        doc_id: {type: integer}
+        doc_no: {type: string, example: "EDOC-2026-001234"}
+        status: {type: string, enum: [SUBMITTED]}
+        invoice:
+          $ref: '#/components/schemas/Invoice'
+
+    Invoice:
+      type: object
+      properties:
+        id: {type: integer}
+        doc_id: {type: integer}
+        amount: {type: number, format: float}
+        currency: {type: string, example: "LAK"}
+        due_date: {type: string, format: date}
+        status: {type: string, enum: [PENDING, PAID, EXPIRED]}
+
+    DocumentSummary:
+      type: object
+      properties:
+        id: {type: integer}
+        doc_no: {type: string}
+        doc_item_name: {type: string}
+        status: {type: string}
+        submitted_at: {type: string, format: date-time}
+        amount: {type: number, format: float}
+        invoice_status: {type: string}
+
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/DocumentSummary'
+        - type: object
+          properties:
+            form_data:
+              type: object
+              additionalProperties: {type: string}
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/StatusLog'
+            invoice:
+              $ref: '#/components/schemas/Invoice'
+            payment:
+              $ref: '#/components/schemas/Payment'
+            file:
+              $ref: '#/components/schemas/DocumentFile'
+
+    StatusLog:
+      type: object
+      properties:
+        id: {type: integer}
+        status: {type: string}
+        remark: {type: string}
+        created_by: {type: string}
+        created_at: {type: string, format: date-time}
+
+    Payment:
+      type: object
+      properties:
+        id: {type: integer}
+        invoice_id: {type: integer}
+        method: {type: string, enum: [QR, CASH]}
+        qr_token: {type: string}
+        qr_image_url: {type: string}
+        amount: {type: number, format: float}
+        status: {type: string, enum: [PENDING, PAID, FAILED, EXPIRED]}
+        paid_at: {type: string, format: date-time}
+        bank_ref: {type: string}
+        expires_at: {type: string, format: date-time}
+
+    DocumentFile:
+      type: object
+      properties:
+        id: {type: integer}
+        doc_id: {type: integer}
+        file_path: {type: string}
+        signed_by: {type: string}
+        version: {type: integer}
+        download_url: {type: string}
+
+    # ---------- Hierarchy ----------
+    Province:
+      type: object
+      properties:
+        id: {type: integer}
+        name_lo: {type: string}
+        name_en: {type: string}
+    District:
+      type: object
+      properties:
+        id: {type: integer}
+        province_id: {type: integer}
+        name_lo: {type: string}
+        name_en: {type: string}
+    Tasseng:
+      type: object
+      properties:
+        id: {type: integer}
+        district_id: {type: integer}
+        name_lo: {type: string}
+        name_en: {type: string}
+    Village:
+      type: object
+      properties:
+        id: {type: integer}
+        tasseng_id: {type: integer}
+        name_lo: {type: string}
+        name_en: {type: string}
+
+  /hierarchy:
+    get:
+      summary: Get administrative hierarchy (Provinces, Districts, Tassengs, Villages)
+      description: |
+        Returns the administrative hierarchy data, used for dropdowns in the PWA.
+        The response structure is nested for easy selection.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provinces:
+                    type: array
+                    items: {$ref: '#/components/schemas/Province'}
+                  districts:
+                    type: array
+                    items: {$ref: '#/components/schemas/District'}
+                  tassengs:
+                    type: array
+                    items: {$ref: '#/components/schemas/Tasseng'}
+                  villages:
+                    type: array
+                    items: {$ref: '#/components/schemas/Village'}
+
+    QrResponse:
+      type: object
+      properties:
+        qr_token: {type: string}
+        qr_image_url: {type: string}
+        amount: {type: number, format: float}
+        expires_at: {type: string, format: date-time}
+        deep_link: {type: string, description: 'Optional: bank app deep link'}
+
+    # ---------- Receipt ----------
+    ReceiptResponse:
+      type: object
+      properties:
+        receipt_no: {type: string, example: "RCP-2026-000456"}
+        doc_no: {type: string}
+        citizen_name: {type: string}
+        amount: {type: number, format: float}
+        paid_at: {type: string, format: date-time}
+        pdf_url: {type: string}
+
+    # ---------- Error ----------
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: {type: string}
+            message: {type: string}
+            details: {type: object}
+
+paths:
+  # ==================== AUTH ====================
+  /auth/login:
+    post:
+      summary: Citizen login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+
+  /auth/register:
+    post:
+      summary: Register new citizen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '409':
+          description: Phone already registered
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+
+  /auth/me:
+    get:
+      summary: Get current citizen profile
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Citizen'}
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+
+  # ==================== CATALOG ====================
+  /doc-types:
+    get:
+      summary: List active document categories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DocType'}
+
+  /doc-items:
+    get:
+      summary: List document items (filter by type)
+      parameters:
+        - name: doc_type_id
+          in: query
+          schema: {type: integer}
+        - name: is_active
+          in: query
+          schema: {type: boolean, default: true}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DocItem'}
+
+  /doc-items/{id}:
+    get:
+      summary: Get single document item with fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DocItem'}
+        '404':
+          description: Not found
+
+  /doc-items/{id}/fields:
+    get:
+      summary: Get dynamic form fields for a document item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DocField'}
+
+  # ==================== APPLICATIONS ====================
+  /documents:
+    post:
+      summary: Submit new document application
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SubmitApplicationRequest'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SubmitApplicationResponse'}
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+        '401':
+          description: Unauthorized
+    get:
+      summary: List my applications
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: status
+          in: query
+          schema: {type: string}
+        - name: page
+          in: query
+          schema: {type: integer, default: 1}
+        - name: per_page
+          in: query
+          schema: {type: integer, default: 20}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/DocumentSummary'}
+                  pagination:
+                    type: object
+                    properties:
+                      current_page: {type: integer}
+                      per_page: {type: integer}
+                      total: {type: integer}
+
+  /documents/{id}:
+    get:
+      summary: Get my application detail + status history
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DocumentDetail'}
+        '403':
+          description: Not your document
+        '404':
+          description: Not found
+
+  # ==================== PAYMENT / QR ====================
+  /documents/{id}/pay-qr:
+    get:
+      summary: Get QR code for payment
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QrResponse'}
+        '400':
+          description: No pending invoice or already paid
+        '403':
+          description: Not your document
+        '404':
+          description: Not found
+
+  # ==================== DOWNLOAD / RECEIPT ====================
+  /documents/{id}/download:
+    get:
+      summary: Download signed PDF
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        '403':
+          description: Not ready or not authorized
+        '404':
+          description: Not found
+
+  /documents/{id}/receipt:
+    get:
+      summary: Get official receipt (PDF or JSON)
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReceiptResponse'}
+        '403':
+          description: Not paid yet
+        '404':
+          description: Not found
+
+  # ==================== ADMIN CALLBACK (Bank webhook) ====================
+  /payments/callback:
+    post:
+      summary: Bank payment callback (server-to-server, not called by PWA)
+      description: |
+        Secured by HMAC signature header `X-Signature` and IP whitelist.
+        Body varies by bank; example shown for generic provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qr_token: {type: string}
+                amount: {type: number}
+                ref: {type: string}
+                status: {type: string, enum: [PAID, FAILED]}
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: {type: boolean}
+        '400':
+          description: Invalid signature or payload

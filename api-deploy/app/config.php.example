@@ -1,0 +1,19 @@
+<?php
+/**
+ * mDoc API Configuration (EXAMPLE — copy to config.php and fill in real values)
+ * The real config.php is gitignored and must NOT be committed.
+ */
+
+return [
+    'db' => [
+        'host'     => 'localhost',
+        'name'     => 'edoc_tasaeng',
+        'user'     => 'admin',
+        'pass'     => 'CHANGE_ME',
+        'charset'  => 'utf8mb4',
+    ],
+    'jwt_secret'      => 'GENERATE_A_64_CHAR_RANDOM_HEX_STRING_HERE',
+    'token_ttl_hours' => 24,
+    'base_url'        => 'https://mdoc.apis.com.la',
+    'api_prefix'      => 'api/v1',
+];

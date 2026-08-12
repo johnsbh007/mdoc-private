@@ -1,0 +1,35 @@
+# ── Secrets / credentials (NEVER commit) ──
+api-deploy/app/config.php
+config.php
+*.local.php
+
+# ── Dependencies / build output ──
+node_modules/
+mdoc-pwa/node_modules/
+dist/
+mdoc-pwa/dist/
+build/
+vendor/
+
+# ── OS / editor cruft ──
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# ── Local scratch / backups ──
+*.bak
+*~
+layout_server_backup.php
+layout_live.php
+
+# ── Large binary source assets (kept locally, not in git) ──
+source/
+docs/source/
+*.jpeg
+*.png
+*.pdf
+
+# ── API deploy mirror sync artifacts ──
+docs/OBSOLETE_*

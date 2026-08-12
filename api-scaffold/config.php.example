@@ -1,0 +1,19 @@
+<?php
+/**
+ * Example configuration file.
+ * Copy this to config.php and fill in your database credentials.
+ * Never commit config.php to version control.
+ */
+
+return [
+    'db' => [
+        'host' => 'localhost',     // e.g., apis.com.la
+        'name' => 'edoc_tasaeng',
+        'user' => 'your_db_user',
+        'pass' => 'your_db_password',
+    ],
+    // JWT secret for auth (if implementing JWT in the API)
+    'jwt_secret' => 'change_this_to_a_random_string',
+    // Base URL for the API (used in QR code deep links, etc.)
+    'base_url' => 'https://apis.com.la',
+];
