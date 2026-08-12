@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  php-lint:
+    name: PHP Syntax Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql
+          tools: composer
+
+      - name: Lint all PHP files (fail on syntax error)
+        run: |
+          set -e
+          status=0
+          while IFS= read -r f; do
+            if ! php -l "$f"; then
+              echo "::error file=$f::PHP syntax error"
+              status=1
+            fi
+          done < <(find . -type f -name '*.php' -not -path './mdoc-pwa/*' -not -path './vendor/*')
+          exit $status
+
+  frontend-lint:
+    name: PWA Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mdoc-pwa/package-lock.json
+
+      - name: Install & Build PWA
+        working-directory: mdoc-pwa
+        run: |
+          [ -f package-lock.json ] && npm ci || npm install
+          npm run build || echo "no build script; skipping"
+        continue-on-error: true

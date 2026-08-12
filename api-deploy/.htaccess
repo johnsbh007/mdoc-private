@@ -1,0 +1,18 @@
+# mDoc API — route /api/v1/* to index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # If the request is not a real file/dir, route to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Never serve config or PHP source for app/
+RedirectMatch 403 ^/app/
+
+# Basic security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+</IfModule>
