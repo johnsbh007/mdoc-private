@@ -1,3 +1,6 @@
+import os
+EDOC_DB_PASS=os.environ.get('EDOC_DB_PASS','CHANGE_ME')
+SSH_PASS=os.environ.get('EDOC_SSH_PASS','CHANGE_ME')
 #!/usr/bin/env python3
 """
 Extract official Lao hierarchy from tax_ets database and rebuild edoc_tasaeng tables correctly.
@@ -11,10 +14,10 @@ def run_query(db, query):
     """Run a MySQL query and return output as string."""
     cmd = [
         "C:\\Program Files\\PuTTY\\plink.exe", "-ssh", "apis@apis.com.la",
-        "-pw", "apis@#2024",
+        "-pw", SSH_PASS,
         "-hostkey", "SHA256:JfYLE2aSz/xr0F7+GQN3g7I+hCQk9kKdT/4m9YcJ/ec",
         "-batch",
-        f"mysql -uadmin -p'Sql_admin@#2024' {db} -e \"{query}\" 2>/dev/null"
+        f"mysql -uadmin -p'{EDOC_DB_PASS}' {db} -e \"{query}\" 2>/dev/null"
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     return result.stdout

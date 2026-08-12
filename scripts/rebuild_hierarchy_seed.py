@@ -1,3 +1,6 @@
+import os
+EDOC_DB_PASS=os.environ.get('EDOC_DB_PASS','CHANGE_ME')
+SSH_PASS=os.environ.get('EDOC_SSH_PASS','CHANGE_ME')
 #!/usr/bin/env python3
 """
 REGENERATE + RE-SEED the official Lao administrative hierarchy into edoc_tasaeng.
@@ -29,7 +32,7 @@ OUT_PATH = 'D:/m-doc-taseng/docs/seed_hierarchy_full.sql'
 
 PLINK = [
     'C:\\Program Files\\PuTTY\\plink.exe', '-ssh', 'apis@apis.com.la',
-    '-pw', 'apis@#2024', '-hostkey',
+    '-pw', SSH_PASS, '-hostkey',
     'SHA256:JfYLE2aSz/xr0F7+GQN3g7I+hCQk9kKdT/4m9YcJ/ec', '-batch',
 ]
 
@@ -113,7 +116,7 @@ def main():
     if '--apply' in sys.argv:
         import subprocess as sp
         print('Applying on apis.com.la ...')
-        p = sp.run(PLINK + ['mysql', '-uadmin', "-p'Sql_admin@#2024'", 'edoc_tasaeng'],
+        p = sp.run(PLINK + ['mysql', '-uadmin', EDOC_DB_PASS, 'edoc_tasaeng'],
                    input='\n'.join(sql), capture_output=True, text=True, timeout=600)
         print(p.stdout[-2000:] if p.stdout else '(no stdout)')
         print(p.stderr[-2000:] if p.stderr else '(no stderr)')
