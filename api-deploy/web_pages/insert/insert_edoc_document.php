@@ -42,10 +42,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->prepare("INSERT INTO edoc_document_status (doc_id, status, remark, changed_by) VALUES (?, 'SUBMITTED', ?, ?)")->execute([$doc_id, $remark, $created_by]);
 
         $conn->commit();
-        $_SESSION['alert'] = ['type' => 'success', 'message' => "ບັນທຶກຄຳຮ້ອງ $doc_no ສຳເລັດ!"];
+        $msg = "ບັນທຶກຄຳຮ້ອງ $doc_no ສຳເລັດ!";
+        $_SESSION['alert'] = ['type' => 'success', 'message' => $msg];
     } catch (PDOException $e) {
         $conn->rollBack();
-        $_SESSION['alert'] = ['type' => 'error', 'message' => 'ຜິດພາດ: ' . $e->getMessage()];
+        $msg = 'ຜິດພາດ: ' . $e->getMessage();
+        $_SESSION['alert'] = ['type' => 'error', 'message' => $msg];
+    }
+    // For AJAX (X-Requested-With or JSON accept) return JSON so the UI can react; otherwise redirect.
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status'   => isset($e) ? 'error' : 'success',
+            'message'  => $msg,
+            'doc_id'   => $doc_id ?? null,
+            'doc_no'   => $doc_no ?? null,
+        ]);
+        exit;
     }
     header("Location: ../pages/list_edoc_document.php"); exit;
 }
