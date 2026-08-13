@@ -156,12 +156,12 @@ $_current = basename($_SERVER['PHP_SELF']);
       </a>
 
       <!-- 2. ຂໍ້ມູນກ່ຽວຂ້ອງ (Master Data) -->
-      <a class="sidebar-link has-children <?= in_array($_current, ['list_donors.php', 'donors.php', 'list_provinces.php', 'list_asset_categories.php', 'list_assets.php', 'list_categories.php', 'list_group_categories.php', 'list_outputs.php', 'list_activities.php', 'list_account_groups.php', 'list_chart_of_accounts.php', 'list_banks.php', 'list_books.php', 'list_budgets.php', 'list_budget_outputs.php', 'list_budget_summary.php', 'list_budget_activities.php', 'list_contracts.php', 'list_was.php', 'list_edoc_citizen.php']) ? '' : 'collapsed' ?>" data-bs-toggle="collapse" href="#nav-master" role="button">
+      <a class="sidebar-link has-children <?= in_array($_current, ['list_donors.php', 'donors.php', 'list_provinces.php', 'list_asset_categories.php', 'list_assets.php', 'list_categories.php', 'list_group_categories.php', 'list_outputs.php', 'list_activities.php', 'list_account_groups.php', 'list_chart_of_accounts.php', 'list_banks.php', 'list_books.php', 'list_budgets.php', 'list_budget_outputs.php', 'list_budget_summary.php', 'list_budget_activities.php', 'list_contracts.php', 'list_was.php']) ? '' : 'collapsed' ?>" data-bs-toggle="collapse" href="#nav-master" role="button">
         <i class="fas fa-database sidebar-icon"></i>
         <span>ຂໍ້ມູນພື້ນຖານ</span>
         <i class="fas fa-chevron-right sidebar-arrow"></i>
       </a>
-      <div class="collapse <?= in_array($_current, ['list_donors.php', 'donors.php', 'list_provinces.php', 'list_asset_categories.php', 'list_assets.php', 'list_categories.php', 'list_group_categories.php', 'list_outputs.php', 'list_activities.php', 'list_account_groups.php', 'list_chart_of_accounts.php', 'list_banks.php', 'list_books.php', 'list_budgets.php', 'list_budget_outputs.php', 'list_budget_summary.php', 'list_budget_activities.php', 'list_contracts.php', 'list_was.php', 'list_edoc_citizen.php']) ? 'show' : '' ?>" id="nav-master">
+      <div class="collapse <?= in_array($_current, ['list_donors.php', 'donors.php', 'list_provinces.php', 'list_asset_categories.php', 'list_assets.php', 'list_categories.php', 'list_group_categories.php', 'list_outputs.php', 'list_activities.php', 'list_account_groups.php', 'list_chart_of_accounts.php', 'list_banks.php', 'list_books.php', 'list_budgets.php', 'list_budget_outputs.php', 'list_budget_summary.php', 'list_budget_activities.php', 'list_contracts.php', 'list_was.php']) ? 'show' : '' ?>" id="nav-master">
         <div class="sidebar-sub">
 
           <!-- ຂໍ້ມູນພື້ນຖານ (eDoc) - ລຳດັບຕາມທີ່ກຳນົດ -->
@@ -173,21 +173,20 @@ $_current = basename($_SERVER['PHP_SELF']);
           <a href="../pages/list_edoc_doc_item.php"     class="<?= in_array($_current, ['list_edoc_doc_item.php']) ? 'active' : '' ?>">ລາຍການເອກະສານ</a>
           <a href="../pages/list_edoc_fee_type.php"     class="<?= in_array($_current, ['list_edoc_fee_type.php']) ? 'active' : '' ?>">ປະເພດລາຍຮັບ</a>
           <a href="../pages/list_edoc_expense_type.php" class="<?= in_array($_current, ['list_edoc_expense_type.php']) ? 'active' : '' ?>">ປະເພດລາຍຈ່າຍ</a>
-          <a href="../pages/list_edoc_citizen.php"      class="<?= in_array($_current, ['list_edoc_citizen.php']) ? 'active' : '' ?>">ບັນທຶກພົນລະເມືອງ</a>
         </div>
       </div>
 
       <!-- 3. ເຄື່ອນໄຫວການເງິນ -->
-            <a class="sidebar-link has-children <?= in_array($_current, ['list_drv.php', 'list_edoc_document.php']) ? '' : 'collapsed' ?>" data-bs-toggle="collapse" href="#nav-transaction" role="button">
+      <a class="sidebar-link has-children <?= in_array($_current, ['list_edoc_document.php']) ? '' : 'collapsed' ?>" data-bs-toggle="collapse" href="#nav-transaction" role="button">
         <i class="fas fa-exchange-alt"></i>
         <span>ບໍລິການເອກະສານ</span>
         <i class="fas fa-chevron-right sidebar-arrow"></i>
       </a>
-      <div class="collapse <?= in_array($_current, ['list_drv.php', 'list_edoc_document.php']) ? 'show' : '' ?>" id="nav-transaction">
+      <div class="collapse <?= in_array($_current, ['list_edoc_document.php']) ? 'show' : '' ?>" id="nav-transaction">
         <div class="sidebar-sub">
           <a href="../pages/list_edoc_document.php?status=SUBMITTED" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'SUBMITTED' ? 'active' : '' ?>">ລາຍການ ສະເໜີຂໍເອກະສານ</a>
           <a href="../pages/list_edoc_document.php?status=PENDING_APPROVAL" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'PENDING_APPROVAL' ? 'active' : '' ?>">ລາຍການ ເອກະສານລໍຖ້າອະນຸມັດ</a>
-          <a href="../pages/list_edoc_document.php?status=PENDING_PAYMENT" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'PENDING_PAYMENT' ? 'active' : '' ?>">ລາຍການ ເອກະສານລໍຖ້າຊຳລະຄ່າທຳນຽມ</a>
+          <a href="../pages/list_edoc_document.php?status=ISSUED" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'ISSUED' ? 'active' : '' ?>">ລາຍການ ເອກະສານລໍຖ້າຊຳລະຄ່າທຳນຽມ</a>
           <a href="../pages/list_edoc_document.php?status=HANDOVER" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'HANDOVER' ? 'active' : '' ?>">ລາຍການ ເອກະສານລໍຖ້າສົ່ງມອບ</a>
           <a href="../pages/list_edoc_document.php" class="<?= $_current === 'list_edoc_document.php' && !isset($_GET['status']) ? 'active' : '' ?>">ລາຍການເອກະສານ ບໍລິການເພີ້່ມ</a>
           <a href="../pages/list_edoc_document.php?status=PAID" class="<?= $_current === 'list_edoc_document.php' && ($_GET['status'] ?? '') === 'PAID' ? 'active' : '' ?>">ລາຍການ ຮັບເງິນ</a>
@@ -196,7 +195,6 @@ $_current = basename($_SERVER['PHP_SELF']);
           <a href="#">ລາຍງານສະຖິຕິເອກະສານ</a>
         </div>
       </div>
-
 
       <!-- 5. ລາຍງານໂຄງການ -->
       <a class="sidebar-link has-children collapsed" data-bs-toggle="collapse" href="#nav-report-proj" role="button">
@@ -221,7 +219,7 @@ $_current = basename($_SERVER['PHP_SELF']);
       </a>
       <div class="collapse" id="nav-report-fin">
         <div class="sidebar-sub">
-          <a href="#">ລາຍການບັນທຶກ ລາຍຮັບງົບປະມານ</a>
+          <a href="../pages/Budget_revenue_records.php">ລາຍການບັນທຶກ ລາຍຮັບງົບປະມານ</a>
           <a href="#">ລາຍການບັນທຶກ ລາຍຈ່າຍງົບປະມານ</a>
           <a href="#">ລາຍງານ ລາຍຮັບງົບປະມານ</a>
           <a href="#">ລາຍງານ ລາຍຈ່າຍງົບປະມານ</a>
