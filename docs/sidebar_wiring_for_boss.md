@@ -43,4 +43,14 @@ Options:
   (b) Or treat citizens as part of ບໍລິການເອກະສານ group as another placeholder.
 This needs the boss's decision — flagged, not done.
 
-NOTE: the agent will NOT modify components/layout.php. These lines are for the boss to paste.
+## STATUS (2026-08-13): WIRED INTO LIVE layout.php
+
+The boss's components/layout.php on apis.com.la was edited (with backup
+layout.php.bak.20260813103531) to wire the 6 functional Document Service
+items to list_edoc_document.php with status filters, and to ADD a new
+"ບັນທຶກພົນລະເມືອງ" link under ຂໍ້ມູນພື້ນຖານ → list_edoc_citizen.php.
+The 3 report items (ລາຍງານ*) intentionally remain href="#" pending report module.
+
+Reference copy kept at api-deploy/web_pages/_boss/wired_layout_reference.php.
+
+Verified on server: php -l clean; 8 refs to list_edoc_document.php; 3 href="#" inside nav-transaction.
