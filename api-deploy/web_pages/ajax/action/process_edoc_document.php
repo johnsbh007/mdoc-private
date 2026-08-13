@@ -27,8 +27,10 @@ try {
         case 'approve':
             if ($doc['status'] === 'SUBMITTED') {
                 $newStatus = 'PENDING_APPROVAL';
-                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
-                $msg = 'ຮັບຮອງຄຳຮ້ອງແລ້ວ (ລໍຖ້າການອະນຸມັດ)';
+                // staff verifies the submitted data, then it goes to approval
+                $conn->prepare("UPDATE edoc_document SET status=?, verified_by=?, verified_at=NOW() WHERE id=?")
+                      ->execute([$newStatus, $changed_by, $id]);
+                $msg = 'ຢືນຢັນຂໍ້ມູນສຳເລັດ (ສົ່ງອະນຸມັດ)';
             } else if ($doc['status'] === 'PENDING_APPROVAL') {
                 $newStatus = 'ISSUED'; // approved -> awaiting payment (per design flow)
                 $conn->prepare("UPDATE edoc_document SET status=?, approved_by=?, approved_at=NOW() WHERE id=?")

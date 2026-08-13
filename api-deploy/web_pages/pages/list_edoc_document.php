@@ -180,10 +180,19 @@ function openReview(id) {
 
 function renderReview(d) {
     var doc = d.doc, form = d.form, hist = d.history, inv = d.invoice;
+    // modal title reflects the current step
+    var titleTxt = 'ຈັດການຄຳຮ້ອງ (Review & Process)';
+    if (doc.status==='SUBMITTED') titleTxt = 'ຢືນຢັນຂໍ້ມູນຄຳຮ້ອງ (Verify)';
+    else if (doc.status==='PENDING_APPROVAL') titleTxt = 'ອະນຸມັດຄຳຮ້ອງ (Approve)';
+    else if (doc.status==='ISSUED') titleTxt = 'ບັນທຶກການຊຳລະ (Record Payment)';
+    else if (doc.status==='PAID') titleTxt = 'ອອກເອກະສານ/ສົ່ງມອບ (Handover)';
+    $('#modalReviewDoc .modal-title').html('<i class="fas fa-tasks"></i> ' + titleTxt);
     var h = '';
     h += '<div class="row mb-2"><div class="col-6"><b>ເລກທີ່:</b> '+doc.doc_no+'</div><div class="col-6"><b>ສະຖານະ:</b> <span class="st-badge st-'+doc.status+'">'+doc.status+'</span></div></div>';
     h += '<div class="row mb-2"><div class="col-6"><b>ພົນລະເມືອງ:</b> '+doc.first_name+' '+doc.last_name+'</div><div class="col-6"><b>ເບີໂທ:</b> '+doc.phone+'</div></div>';
     h += '<div class="row mb-2"><div class="col-6"><b>ເອກະສານ:</b> '+doc.item_name+' ['+doc.doc_item_code+']</div><div class="col-6"><b>ຈຳນວນ:</b> '+Number(doc.amount).toLocaleString()+' ກີບ</div></div>';
+    if (doc.verified_by_name) h += '<div class="row mb-2"><div class="col-6"><b>ຜູ້ຢືນຢັນຂໍ້ມູນ:</b> '+doc.verified_by_name+'</div><div class="col-6"><b>ວັນທີຢືນຢັນ:</b> '+(doc.verified_at ? doc.verified_at : '-')+'</div></div>';
+    if (doc.approved_by_name) h += '<div class="row mb-2"><div class="col-6"><b>ຜູ້ອະນຸມັດ:</b> '+doc.approved_by_name+'</div><div class="col-6"><b>ວັນທີອະນຸມັດ:</b> '+(doc.approved_at ? doc.approved_at : '-')+'</div></div>';
     if (doc.village_name) h += '<div class="row mb-2"><div class="col-12"><b>ທີ່:</b> '+doc.village_name+' / '+doc.taseng_name+'</div></div>';
     if (form.length) { h += '<hr><h6>ຂໍ້ມູນໃນແບບຟອມ</h6>'; form.forEach(f=>{ h += '<div class="mb-1"><b>'+f.field_label+':</b> '+ (f.field_value||'-') +'</div>'; }); }
     h += '<hr><h6>ປະຫວັດສະຖານະ</h6><ul class="list-unstyled">';
@@ -196,7 +205,7 @@ function renderReview(d) {
     // action buttons by status
     var f = '<input type="hidden" id="rev_id" value="'+doc.id+'">';
     if (doc.status==='SUBMITTED') {
-        f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check"></i> ຮັບຮອງ (ສົ່ງອະນຸມັດ)</button>';
+        f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check-double"></i> ຢືນຢັນຂໍ້ມູນ (Verify)</button>';
         f += '<button class="btn btn-danger me-2" onclick="doAction(\'reject\')"><i class="fas fa-times"></i> ປະຕິເສດ</button>';
     } else if (doc.status==='PENDING_APPROVAL') {
         f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check"></i> ອະນຸມັດ</button>';
