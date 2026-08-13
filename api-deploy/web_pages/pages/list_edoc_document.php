@@ -164,6 +164,20 @@ function loadDocFields() {
     });
 }
 
+function openReview(id) {
+    $.post('../ajax/search/get_edoc_document.php', {id:id}, function(res){
+        try {
+            let r = JSON.parse(res);
+            if (r.status === 'success') {
+                renderReview(r.data);
+                new bootstrap.Modal(document.getElementById('modalReviewDoc')).show();
+            } else {
+                Swal.fire('ຜິດພາດ', r.message, 'error');
+            }
+        } catch(e) { Swal.fire('ຜິດພາດ','ເກີດຂໍ້ຜິດພາດ','error'); }
+    });
+}
+
 function renderReview(d) {
     var doc = d.doc, form = d.form, hist = d.history, inv = d.invoice;
     var h = '';
@@ -181,7 +195,10 @@ function renderReview(d) {
 
     // action buttons by status
     var f = '<input type="hidden" id="rev_id" value="'+doc.id+'">';
-    if (doc.status==='SUBMITTED' || doc.status==='PENDING_APPROVAL') {
+    if (doc.status==='SUBMITTED') {
+        f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check"></i> ຮັບຮອງ (ສົ່ງອະນຸມັດ)</button>';
+        f += '<button class="btn btn-danger me-2" onclick="doAction(\'reject\')"><i class="fas fa-times"></i> ປະຕິເສດ</button>';
+    } else if (doc.status==='PENDING_APPROVAL') {
         f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check"></i> ອະນຸມັດ</button>';
         f += '<button class="btn btn-danger me-2" onclick="doAction(\'reject\')"><i class="fas fa-times"></i> ປະຕິເສດ</button>';
     } else if (doc.status==='ISSUED') {

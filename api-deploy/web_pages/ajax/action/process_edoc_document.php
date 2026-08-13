@@ -25,13 +25,17 @@ try {
 
     switch ($action) {
         case 'approve':
-            if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL'])) {
-                $ok=false; $msg='ບໍ່ສາມາດອະນຸມັດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
-            } else {
-                $newStatus='ISSUED'; // approved -> awaiting payment (per design flow)
+            if ($doc['status'] === 'SUBMITTED') {
+                $newStatus = 'PENDING_APPROVAL';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
+                $msg = 'ຮັບຮອງຄຳຮ້ອງແລ້ວ (ລໍຖ້າການອະນຸມັດ)';
+            } else if ($doc['status'] === 'PENDING_APPROVAL') {
+                $newStatus = 'ISSUED'; // approved -> awaiting payment (per design flow)
                 $conn->prepare("UPDATE edoc_document SET status=?, approved_by=?, approved_at=NOW() WHERE id=?")
                       ->execute([$newStatus, $changed_by, $id]);
-                $msg='ອະນຸມັດສຳເລັດ (ລໍຖ້າການຊຳລະ)';
+                $msg = 'ອະນຸມັດສຳເລັດ (ລໍຖ້າການຊຳລະ)';
+            } else {
+                $ok = false; $msg = 'ບໍ່ສາມາດອະນຸມັດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
             }
             break;
         case 'reject':
