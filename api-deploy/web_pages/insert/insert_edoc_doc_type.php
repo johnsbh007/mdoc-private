@@ -2,7 +2,7 @@
 session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
-require_once '../../connect.php';
+require_once '../connect.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id            = $_POST['id'] ?? '';
