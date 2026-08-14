@@ -19,10 +19,18 @@ if (!$type) {
     include '../components/layout_footer.php';
     exit;
 }
-// default doc_item for this type (first active item)
-$item = $conn->prepare("SELECT id, doc_item_code, name_lo FROM edoc_doc_item WHERE doc_type_id=? AND is_active=1 ORDER BY id LIMIT 1");
-$item->execute([$doc_type_id]);
-$item = $item->fetch(PDO::FETCH_ASSOC);
+// default doc_item for this type (explicit if provided, else first active item)
+$doc_item_id = !empty($_GET['doc_item_id']) ? (int)$_GET['doc_item_id'] : 0;
+if ($doc_item_id) {
+    $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE id=? AND doc_type_id=? AND is_active=1");
+    $item->execute([$doc_item_id, $doc_type_id]);
+    $item = $item->fetch(PDO::FETCH_ASSOC);
+}
+if (!$item) {
+    $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE doc_type_id=? AND is_active=1 ORDER BY id LIMIT 1");
+    $item->execute([$doc_type_id]);
+    $item = $item->fetch(PDO::FETCH_ASSOC);
+}
 $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <div class="content-wrapper p-3">
@@ -30,13 +38,14 @@ $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->
     <ol class="breadcrumb mb-2">
       <li class="breadcrumb-item"><a href="list_edoc_document.php">ບໍລິການເອກະສານ</a></li>
       <li class="breadcrumb-item"><a href="select_doc_type.php">ເລືອກປະເພດ</a></li>
-      <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($type['name_lo']) ?></li>
+      <li class="breadcrumb-item"><a href="select_doc_type.php"><?= htmlspecialchars($type['name_lo']) ?></a></li>
+      <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($item['name_lo']) ?></li>
     </ol>
   </nav>
 
   <div class="card">
     <div class="card-header bg-primary text-white">
-      ຄຳຮ້ອງໃໝ່: <?= htmlspecialchars($type['name_lo']) ?>
+      ຄຳຮ້ອງໃໝ່: <?= htmlspecialchars($item['name_lo']) ?>
       <span class="badge bg-light text-dark">[<?= htmlspecialchars($type['doc_type_code']) ?>]</span>
     </div>
     <div class="card-body">
