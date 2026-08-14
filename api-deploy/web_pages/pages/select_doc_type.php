@@ -5,6 +5,8 @@ if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit
 require_once '../connect.php';
 $pageTitle = "ເລືອກປະເພດເອກະສານ - New Request";
 $_current = 'select_doc_type.php';
+// mode: 'draft' (normal New Request) or 'submit' (walk-in citizen request) -> request_doc only submits
+$mode = in_array(($_GET['mode'] ?? ''), ['draft','submit']) ? $_GET['mode'] : 'draft';
 include '../components/layout.php';
 
 // Level 1: document types
@@ -34,7 +36,7 @@ foreach ($items as $it) { $itemsByType[$it['doc_type_id']][] = $it; }
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb mb-2">
       <li class="breadcrumb-item"><a href="list_edoc_document.php">ບໍລິການເອກະສານ</a></li>
-      <li class="breadcrumb-item active" aria-current="page">ເລືອກປະເພດ</li>
+      <li class="breadcrumb-item active" aria-current="page"><?= $mode==='submit' ? 'ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)' : 'ເລືອກປະເພດ' ?></li>
     </ol>
   </nav>
 
@@ -42,7 +44,7 @@ foreach ($items as $it) { $itemsByType[$it['doc_type_id']][] = $it; }
   <div id="typePanel">
     <div class="card">
       <div class="card-header bg-primary text-white">
-        ຂັ້ນທີ 1: ເລືອກປະເພດເອກະສານ / Step 1: Select Document Type
+        <?= $mode==='submit' ? 'ຂັ້ນທີ 1: ເລືອກປະເພດເອກະສານ (ພົນລະເມືອງຂໍມາ) / Step 1: Select Document Type' : 'ຂັ້ນທີ 1: ເລືອກປະເພດເອກະສານ / Step 1: Select Document Type' ?>
       </div>
       <div class="card-body">
         <p class="text-muted">ກະລຸນາເລືອກປະເພດເອກະສານທີ່ຕ້ອງການ.</p>
@@ -84,6 +86,7 @@ foreach ($items as $it) { $itemsByType[$it['doc_type_id']][] = $it; }
 <script>
 const ITEMS_BY_TYPE = <?= json_encode($itemsByType, JSON_UNESCAPED_UNICODE) ?>;
 const TYPES = <?= json_encode(array_column($types, 'name_lo', 'id'), JSON_UNESCAPED_UNICODE) ?>;
+const MODE = <?= json_encode($mode, JSON_UNESCAPED_UNICODE) ?>;
 
 function chooseType(typeId) {
   const list = ITEMS_BY_TYPE[typeId];
@@ -112,7 +115,7 @@ function chooseType(typeId) {
 }
 
 function chooseItem(typeId, itemId) {
-  window.location.href = 'request_doc.php?doc_type_id=' + typeId + '&doc_item_id=' + itemId;
+  window.location.href = 'request_doc.php?doc_type_id=' + typeId + '&doc_item_id=' + itemId + '&mode=' + encodeURIComponent(MODE);
 }
 
 function backToTypes() {

@@ -86,7 +86,7 @@ require '../components/layout.php';
       <div class="action-buttons-top mb-3 mt-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
         <button class="btn btn-primary" onclick="location.href='select_doc_type.php'"><i class="fas fa-file-alt"></i> ສ້າງໃໝ່ (New Request)</button>
-        <button class="btn btn-success" onclick="openAddDoc()"><i class="fas fa-plus"></i> ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)</button>
+        <button class="btn btn-success" onclick="location.href='select_doc_type.php?mode=submit'"><i class="fas fa-plus"></i> ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)</button>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
     </div>

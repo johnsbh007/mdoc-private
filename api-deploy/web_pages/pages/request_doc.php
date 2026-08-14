@@ -31,6 +31,9 @@ if (!$item) {
     $item->execute([$doc_type_id]);
     $item = $item->fetch(PDO::FETCH_ASSOC);
 }
+// mode: 'draft' = normal New Request (allow save-as-draft), 'submit' = walk-in citizen request (submit only, becomes SUBMITTED)
+$mode = in_array(($_GET['mode'] ?? ''), ['draft','submit']) ? $_GET['mode'] : 'draft';
+$isSubmit = ($mode === 'submit');
 $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 
 // lookup tables for basic person data (save code, show name)
@@ -64,7 +67,7 @@ function fillSelect(id, map, label){ const el=document.getElementById(id); if(el
 
   <div class="card">
     <div class="card-header bg-primary text-white">
-      ຄຳຮ້ອງໃໝ່: <?= htmlspecialchars($item['name_lo']) ?>
+      <?= $isSubmit ? 'ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)' : 'ຄຳຮ້ອງໃໝ່: ' . htmlspecialchars($item['name_lo']) ?>
       <span class="badge bg-light text-dark">[<?= htmlspecialchars($type['doc_type_code']) ?>]</span>
     </div>
     <div class="card-body">
@@ -141,9 +144,11 @@ function fillSelect(id, map, label){ const el=document.getElementById(id); if(el
       </div>
 
       <div class="d-flex gap-2 mt-3">
+        <?php if (!$isSubmit): ?>
         <button class="btn btn-secondary" onclick="saveRequest('draft')"><i class="fas fa-save"></i> ບັນທຶກເປັນຮ່າງ (Draft)</button>
-        <button class="btn btn-primary" onclick="saveRequest('submit')"><i class="fas fa-paper-plane"></i> ສົ່ງຄຳຮ້ອງ (Submit)</button>
-        <a href="select_doc_type.php" class="btn btn-light border">ຍົກເລິກ</a>
+        <?php endif; ?>
+        <button class="btn btn-primary" onclick="saveRequest('submit')"><i class="fas fa-paper-plane"></i> <?= $isSubmit ? 'ບັນທຶກຄຳຮ້ອງ (Submit)' : 'ສົ່ງຄຳຮ້ອງ (Submit)' ?></button>
+        <a href="select_doc_type.php?mode=<?= $mode ?>" class="btn btn-light border">ຍົກເລິກ</a>
       </div>
     </div>
   </div>
