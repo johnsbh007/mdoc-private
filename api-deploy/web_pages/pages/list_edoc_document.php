@@ -28,7 +28,20 @@ $stmt->execute($params);
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total = count($docs);
 
-$statuses = ['SUBMITTED','DRAFT','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED','REJECTED','CANCELED'];
+// Status code -> display label (Lao / English). Order: draft, submitted, then the rest.
+$status_labels = [
+  'DRAFT'            => 'ຮ່າງ/draft',
+  'SUBMITTED'        => 'ຮັບແລ້ວ/submitted',
+  'PENDING_APPROVAL' => 'ລໍຖ້າອະນຸມັດ/Pending Approval',
+  'ISSUED'           => 'ອະນຸມັດແລ້ວ/Issued',
+  'PENDING_PAYMENT'  => 'ລໍຖ້າຊໍາລະ/Pending Payment',
+  'PAID'             => 'ຊໍາລະແລ້ວ/Paid',
+  'SIGNED'           => 'ເຊັນແລ້ວ/Signed',
+  'HANDOVER'         => 'ສົ່ງໃຫ້ແລ້ວ/Handover',
+  'DOWNLOADED'       => 'ດາວໂຫລດແລ້ວ/Downloaded',
+  'REJECTED'         => 'ປະຕິເສດ/Rejected',
+  'CANCELED'         => 'ຍົກເລີກ/Canceled',
+];
 
 require '../components/layout.php';
 ?>
@@ -85,10 +98,10 @@ require '../components/layout.php';
 
   <div class="row mb-3">
     <div class="col-auto">
-      <select id="statusFilter" class="form-select" onchange="filterStatus()">
+      <select id="statusFilter" class="form-select" style="min-width: 230px; width: auto; max-width: 320px;" onchange="filterStatus()">
         <option value="">ທຸກສະຖານະ</option>
-        <?php foreach ($statuses as $s): ?>
-          <option value="<?= $s ?>" <?= $statusFilter == $s ? 'selected' : '' ?>><?= $s ?></option>
+        <?php foreach ($status_labels as $code => $label): ?>
+          <option value="<?= $code ?>" <?= $statusFilter == $code ? 'selected' : '' ?>><?= $label ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -117,7 +130,7 @@ require '../components/layout.php';
             <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?><br><small class="text-muted"><?= htmlspecialchars($row['village_name'] ?? '-') ?></small></td>
             <td><?= htmlspecialchars($row['item_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['doc_item_code']) ?>]</small></td>
             <td class="text-center"><?= number_format($row['amount'], 2) ?></td>
-            <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $row['status'] ?></span></td>
+            <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $status_labels[$row['status']] ?? $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
             <td class="text-center">
               <?php if ($row['status'] === 'DRAFT'): ?>
