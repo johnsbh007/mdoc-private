@@ -28,7 +28,7 @@ $stmt->execute($params);
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total = count($docs);
 
-$statuses = ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED','REJECTED','CANCELED'];
+$statuses = ['SUBMITTED','DRAFT','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED','REJECTED','CANCELED'];
 
 require '../components/layout.php';
 ?>
@@ -50,7 +50,7 @@ require '../components/layout.php';
 #docTable tbody tr:hover { background-color: #e8f0fb; }
 #docTable tbody td { padding: 11px 14px; font-size: 0.88rem; color: #333; border: none !important; vertical-align: middle; }
 .st-badge { font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
-.st-SUBMITTED { background:#e0f2fe;color:#0369a1; } .st-PENDING_APPROVAL { background:#fef9c3;color:#a16207; }
+.st-SUBMITTED { background:#e0f2fe;color:#0369a1; } .st-DRAFT { background:#fde68a;color:#a16207; } .st-PENDING_APPROVAL { background:#fef9c3;color:#a16207; }
 .st-ISSUED { background:#ede9fe;color:#6d28d9; } .st-PENDING_PAYMENT { background:#ffedd5;color:#c2410c; }
 .st-PAID { background:#dcfce7;color:#15803d; } .st-SIGNED { background:#dbeafe;color:#1d4ed8; }
 .st-HANDOVER { background:#cffafe;color:#0e7490; } .st-DOWNLOADED { background:#bbf7d0;color:#166534; }
@@ -63,8 +63,7 @@ require '../components/layout.php';
 
 <div class="container-fluid py-4">
   <div class="prov-breadcrumb">
-    <a href="/edoc/index.php">ໜ້າຫຼັກ</a><span>/</span><a href="#">ບໍລິການເອກະສານ</a><span>/</span>ລາຍການຄຳຮ້ອງ (Requests)
-  </div>
+    <a href="/edoc/index.php">ໜ້າຫຼັກ</a><span>/</span><a href="#">ບໍລິການເອກະສານ</a><span>/</span>ລາຍການຄຳຮ້ອງ (Requests)</div>
 
   <div class="apims-page-header d-flex justify-content-between align-items-end mb-3">
     <div>
@@ -73,6 +72,7 @@ require '../components/layout.php';
       </h1>
       <div class="action-buttons-top mb-3 mt-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
+        <button class="btn btn-primary" onclick="openDraftModal()"><i class="fas fa-file-alt"></i> ສ້າງໃໝ່ (New Request)</button>
         <button class="btn btn-success" onclick="openAddDoc()"><i class="fas fa-plus"></i> ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງມາຂໍ)</button>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
@@ -119,7 +119,13 @@ require '../components/layout.php';
             <td class="text-center"><?= number_format($row['amount'], 2) ?></td>
             <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
-            <td class="text-center"><button class="btn btn-primary btn-sm" onclick="openReview(<?= $row['id'] ?>)"><i class="fas fa-tasks"></i> ຈັດການ</button></td>
+            <td class="text-center">
+              <?php if ($row['status'] === 'DRAFT'): ?>
+                <button class="btn btn-warning btn-sm" onclick="openDraftEntry(<?= $row['id'] ?>)"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
+              <?php elseif ($row['status'] === 'SUBMITTED'): ?>
+                <button class="btn btn-primary btn-sm" onclick="openReview(<?= $row['id'] ?>)"><i class="fas fa-tasks"></i> ຈັດການ</button>
+              <?php endif; ?>
+            </td>
           </tr>
           <?php endforeach; ?>
           <?php if (empty($docs)): ?>
@@ -147,101 +153,108 @@ $(document).ready(function() {
 });
 function filterStatus() { var s = $('#statusFilter').val(); window.location.href = 'list_edoc_document.php' + (s ? '?status=' + s : ''); }
 
-function openAddDoc() { $('#formDoc')[0].reset(); $('#doc_hidden_id').val(''); $('#doc_amount').val(''); $('#doc_fields_wrap').html(''); $('#modalDocTitle').html('ຄຳຮ້ອງໃໝ່'); new bootstrap.Modal(document.getElementById('modalFormDoc')).show(); }
+function clearDocForm() {
+  $('#formDoc')[0].reset();
+  $('#doc_hidden_id').val('');
+  $('#doc_citizen').val('');
+  $('#doc_item').val('');
+  $('#doc_village').val('');
+  $('#manual_first_name').val('');
+  $('#manual_last_name').val('');
+  $('#manual_gender').val('');
+  $('#manual_dob').val('');
+  $('#manual_phone').val('');
+  $('#manual_email').val('');
+  $('#manual_id_card').val('');
+  $('#manual_address_line').val('');
+  $('#doc_amount').val('');
+  $('#doc_remark').val('');
+  $('#doc_fields_wrap').html('');
+}
+
+function openAddDoc() {
+  clearDocForm();
+  $('#doc_mode').val('submit');
+  $('#modalDocTitle').html('ຄຳຮ້ອງໃໝ່');
+  $('#doc_status_hint').text('SUBMITTED');
+  $('#submitDocBtn').text('ບັນທຶກຄຳຮ້ອງ');
+  new bootstrap.Modal(document.getElementById('modalFormDoc')).show();
+}
+
+function openDraftModal() {
+  clearDocForm();
+  $('#doc_mode').val('draft');
+  $('#modalDocTitle').html('ບັນທຶກເປັນຮ່າງ (DRAFT)');
+  $('#doc_status_hint').text('DRAFT');
+  $('#submitDocBtn').text('ບັນທຶກເປັນຮ່າງ');
+  new bootstrap.Modal(document.getElementById('modalFormDoc')).show();
+}
+
+function parseJson(res) {
+  if (typeof res === 'object' && res !== null) return res;
+  try { return JSON.parse(res); } catch(e) { return null; }
+}
 
 function loadDocFields() {
-    var di = $('#doc_item').val();
-    if (!di) { $('#doc_fields_wrap').html(''); $('#doc_amount').val(''); return; }
-    $.get('../ajax/search/get_edoc_docitem_fields.php', { doc_item_id: di }, function(res){
-        try { let d = JSON.parse(res);
-            if (d.status==='success'){
-                let h='';
-                d.data.fields.forEach(f=>{ h += `<div class="mb-2"><label class="form-label">${f.field_label}</label><input type="text" name="field_${f.id}" class="form-control"></div>`; });
-                $('#doc_fields_wrap').html(h);
-                $('#doc_amount').val(d.data.price);
-            }
-        } catch(e){}
-    });
+  var di = $('#doc_item').val();
+  if (!di) { $('#doc_fields_wrap').html(''); $('#doc_amount').val(''); return; }
+  $.get('../ajax/search/get_edoc_docitem_fields.php', { doc_item_id: di }, function(res){
+    try {
+      let d = parseJson(res);
+      if (d.status==='success') {
+        let h='';
+        d.data.fields.forEach(f => { h += `<div class="mb-2"><label class="form-label">${f.field_label}</label><input type="text" name="field_${f.id}" class="form-control"></div>`; });
+        $('#doc_fields_wrap').html(h);
+        $('#doc_amount').val(d.data.price);
+      }
+    } catch(e) {}
+  });
 }
 
-function openReview(id) {
-    $.post('../ajax/search/get_edoc_document.php', {id:id}, function(res){
-        try {
-            let r = JSON.parse(res);
-            if (r.status === 'success') {
-                renderReview(r.data);
-                new bootstrap.Modal(document.getElementById('modalReviewDoc')).show();
-            } else {
-                Swal.fire('ຜິດພາດ', r.message, 'error');
-            }
-        } catch(e) { Swal.fire('ຜິດພາດ','ເກີດຂໍ້ຜິດພາດ','error'); }
-    });
+function loadDraftToModal(d, formRows) {
+  clearDocForm();
+  $('#doc_hidden_id').val(d.id || '');
+  $('#doc_mode').val('draft');
+  $('#doc_citizen').val(d.citizen_id || '');
+  $('#doc_item').val(d.doc_item_id || '');
+  $('#doc_village').val(d.village_id || '');
+  $('#manual_first_name').val(d.first_name || '');
+  $('#manual_last_name').val(d.last_name || '');
+  $('#manual_gender').val(d.gender || '');
+  $('#manual_dob').val(d.dob || '');
+  $('#manual_phone').val(d.phone || '');
+  $('#manual_email').val(d.email || '');
+  $('#manual_id_card').val(d.id_card || '');
+  $('#manual_address_line').val(d.address_line || '');
+  $('#doc_amount').val(d.amount || '0.00');
+  $('#doc_remark').val(d.latest_remark || '');
+  $('#modalDocTitle').html('ແກ້ໄຂຮ່າງ');
+  $('#doc_status_hint').text('DRAFT');
+  $('#submitDocBtn').text('ບັນທຶກເປັນຮ່າງ');
+  loadDocFields();
+  if (formRows && formRows.length) {
+    setTimeout(function(){
+      formRows.forEach(function(f){ $('#doc_fields_wrap [name="field_' + f.field_id + '"]').val(f.field_value || ''); });
+    }, 350);
+  }
+  new bootstrap.Modal(document.getElementById('modalFormDoc')).show();
 }
 
-function renderReview(d) {
-    var doc = d.doc, form = d.form, hist = d.history, inv = d.invoice;
-    // modal title reflects the current step
-    var titleTxt = 'ຈັດການຄຳຮ້ອງ (Review & Process)';
-    if (doc.status==='SUBMITTED') titleTxt = 'ຢືນຢັນຂໍ້ມູນຄຳຮ້ອງ (Verify)';
-    else if (doc.status==='PENDING_APPROVAL') titleTxt = 'ອະນຸມັດຄຳຮ້ອງ (Approve)';
-    else if (doc.status==='ISSUED') titleTxt = 'ບັນທຶກການຊຳລະ (Record Payment)';
-    else if (doc.status==='PAID') titleTxt = 'ອອກເອກະສານ/ສົ່ງມອບ (Handover)';
-    $('#modalReviewDoc .modal-title').html('<i class="fas fa-tasks"></i> ' + titleTxt);
-    var h = '';
-    h += '<div class="row mb-2"><div class="col-6"><b>ເລກທີ່:</b> '+doc.doc_no+'</div><div class="col-6"><b>ສະຖານະ:</b> <span class="st-badge st-'+doc.status+'">'+doc.status+'</span></div></div>';
-    h += '<div class="row mb-2"><div class="col-6"><b>ພົນລະເມືອງ:</b> '+doc.first_name+' '+doc.last_name+'</div><div class="col-6"><b>ເບີໂທ:</b> '+doc.phone+'</div></div>';
-    h += '<div class="row mb-2"><div class="col-6"><b>ເອກະສານ:</b> '+doc.item_name+' ['+doc.doc_item_code+']</div><div class="col-6"><b>ຈຳນວນ:</b> '+Number(doc.amount).toLocaleString()+' ກີບ</div></div>';
-    if (doc.verified_by_name) h += '<div class="row mb-2"><div class="col-6"><b>ຜູ້ຢືນຢັນຂໍ້ມູນ:</b> '+doc.verified_by_name+'</div><div class="col-6"><b>ວັນທີຢືນຢັນ:</b> '+(doc.verified_at ? doc.verified_at : '-')+'</div></div>';
-    if (doc.approved_by_name) h += '<div class="row mb-2"><div class="col-6"><b>ຜູ້ອະນຸມັດ:</b> '+doc.approved_by_name+'</div><div class="col-6"><b>ວັນທີອະນຸມັດ:</b> '+(doc.approved_at ? doc.approved_at : '-')+'</div></div>';
-    if (doc.village_name) h += '<div class="row mb-2"><div class="col-12"><b>ທີ່:</b> '+doc.village_name+' / '+doc.taseng_name+'</div></div>';
-    if (form.length) { h += '<hr><h6>ຂໍ້ມູນໃນແບບຟອມ</h6>'; form.forEach(f=>{ h += '<div class="mb-1"><b>'+f.field_label+':</b> '+ (f.field_value||'-') +'</div>'; }); }
-    h += '<hr><h6>ປະຫວັດສະຖານະ</h6><ul class="list-unstyled">';
-    hist.forEach(s=>{ h += '<li><span class="st-badge st-'+s.status+'">'+s.status+'</span> <small class="text-muted">'+s.remark+'</small></li>'; });
-    h += '</ul>';
-    if (inv) h += '<div class="mb-2"><b>ໃບເກັບກ້ຽວ:</b> '+inv.inv_no+' ('+inv.status+')</div>';
-    h += '<div class="mt-2"><label class="form-label">ໝາຍເຫດການດຳເນີນ</label><textarea id="rev_remark" class="form-control" rows="2"></textarea></div>';
-    $('#reviewBody').html(h);
-
-    // action buttons by status
-    var f = '<input type="hidden" id="rev_id" value="'+doc.id+'">';
-    if (doc.status==='SUBMITTED') {
-        f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check-double"></i> ຢືນຢັນຂໍ້ມູນ (Verify)</button>';
-        f += '<button class="btn btn-danger me-2" onclick="doAction(\'reject\')"><i class="fas fa-times"></i> ປະຕິເສດ</button>';
-    } else if (doc.status==='PENDING_APPROVAL') {
-        f += '<button class="btn btn-success me-2" onclick="doAction(\'approve\')"><i class="fas fa-check"></i> ອະນຸມັດ</button>';
-        f += '<button class="btn btn-danger me-2" onclick="doAction(\'reject\')"><i class="fas fa-times"></i> ປະຕິເສດ</button>';
-    } else if (doc.status==='ISSUED') {
-        f += '<div class="me-2 d-inline-block"><select id="pay_method" class="form-select form-select-sm d-inline-block" style="width:auto"><option value="CASH">ເງິນສົດ</option><option value="QR">QR</option><option value="TRANSFER">ໂອນ</option></select></div>';
-        f += '<button class="btn btn-primary me-2" onclick="doAction(\'pay\')"><i class="fas fa-money-bill"></i> ບັນທຶກການຊຳລະ</button>';
-    } else if (doc.status==='PAID') {
-        f += '<button class="btn btn-info me-2" onclick="doAction(\'issue\')"><i class="fas fa-hand-holding"></i> ອອກເອກະສານ/ສົ່ງມອບ</button>';
-    } else {
-        f += '<span class="text-muted">ສິ້ນສຸດຂັ້ນຕອນນີ້</span>';
+function openDraftEntry(id) {
+  $.post('../ajax/search/get_edoc_document.php', {id:id}, function(res){
+    try {
+      let r = parseJson(res);
+      if (!r) { Swal.fire('ຜິດພາດ','ເກີດຂໍ້ຜິດພາດ','error'); return; }
+      if (r.status === 'success') {
+        loadDraftToModal(r.data.doc, r.data.form);
+      } else {
+        Swal.fire('ຜິດພາດ', r.message, 'error');
+      }
+    } catch(e) {
+      Swal.fire('ຜິດພາດ','ເກີດຂໍ້ຜິດພາດ','error');
     }
-    f += '<button class="btn btn-outline-secondary" data-bs-dismiss="modal">ປິດ</button>';
-    $('#reviewFooter').html(f);
+  });
 }
 
-function doAction(action) {
-    var id = $('#rev_id').val();
-    var remark = $('#rev_remark').val() || '';
-    var extra = {};
-    if (action==='pay') extra.method = $('#pay_method').val();
-    $.post('../ajax/action/process_edoc_document.php', Object.assign({id:id, action:action, remark:remark}, extra), function(res){
-        try { let r = JSON.parse(res);
-            if (r.status==='success'){ Swal.fire({title:'ສຳເລັດ!', text:r.message, icon:'success', timer:1500, showConfirmButton:false}).then(()=>location.reload()); }
-            else Swal.fire('ຜິດພາດ', r.message, 'error');
-        } catch(e){ Swal.fire('ຜິດພາດ','ເກີດຂໍ້ຜິດພາດ','error'); }
-    });
-}
-
-function deleteEdocDocument(id, no) {
-    Swal.fire({ title:'ຕ້ອງການລຶບຄຳຮ້ອງນີ້?', text:no, icon:'warning', showCancelButton:true, confirmButtonColor:'#d33', cancelButtonColor:'#044482', confirmButtonText:'ລຶບ!', cancelButtonText:'ຍົກເລີກ' }).then((r)=>{
-        if (r.isConfirmed){ $.post('../ajax/del/delete_edoc_document.php',{id:id},function(res){ try{ let d=JSON.parse(res); if(d.status==='success') location.reload(); else Swal.fire('ຜິດພາດ',d.message,'error'); }catch(e){} }); }
-    });
-}
-
-<?php if ($alert): ?>
-Swal.fire({ icon: '<?= $alert['type'] ?>', title: '<?= $alert['type'] === 'success' ? 'ສຳເລັດ!' : 'ແຈ້ງເຕືອນ!' ?>', text: '<?= addslashes($alert['message']) ?>', confirmButtonColor: '#044482', confirmButtonText: 'ຕົກລົງ' });
-<?php endif; ?>
+function submitDraftFromModal() { $('#doc_mode').val('draft'); $('#formDoc').submit(); }
 </script>
