@@ -32,7 +32,26 @@ if (!$item) {
     $item = $item->fetch(PDO::FETCH_ASSOC);
 }
 $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+
+// lookup tables for basic person data (save code, show name)
+$countries   = $conn->query("SELECT code, name_lo, name_en FROM edoc_country WHERE is_active=1 ORDER BY name_lo")->fetchAll(PDO::FETCH_ASSOC);
+$ethnicities = $conn->query("SELECT code, name_lo FROM edoc_ethnicity WHERE is_active=1 ORDER BY code")->fetchAll(PDO::FETCH_ASSOC);
+$religions   = $conn->query("SELECT code, name_lo FROM edoc_religion WHERE is_active=1 ORDER BY name_lo")->fetchAll(PDO::FETCH_ASSOC);
+$occupations = $conn->query("SELECT code, name_lo FROM edoc_occupation WHERE is_active=1 ORDER BY name_lo")->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
+<script>
+// lookup arrays (code -> display name)
+const LOOKUP = {
+  country:   <?= json_encode(array_column($countries, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>,
+  ethnicity: <?= json_encode(array_column($ethnicities, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>,
+  religion:  <?= json_encode(array_column($religions, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>,
+  occupation:<?= json_encode(array_column($occupations, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>
+};
+function optgroup(label, map){ let h='<option value="">-- '+label+' --</option>'; for(const k in map){ h+='<option value="'+k+'">'+map[k]+'</option>'; } return h; }
+function fillSelect(id, map, label){ const el=document.getElementById(id); if(el){ el.innerHTML = optgroup(label, map); } }
+</script>
+
 <div class="content-wrapper p-3">
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb mb-2">
@@ -91,11 +110,11 @@ $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->
             <div class="col-md-2"><label class="form-label">ວັນເກີດ</label><input type="date" id="dob" class="form-control"></div>
             <div class="col-md-3"><label class="form-label">ເບີໂທ</label><input id="phone" class="form-control"></div>
             <div class="col-md-3"><label class="form-label">ອີເມວ</label><input id="email" class="form-control"></div>
-            <div class="col-md-2"><label class="form-label">ສັນຊາດ</label><input id="nationality" class="form-control" value="ລາວ"></div>
-            <div class="col-md-2"><label class="form-label">ເຊື້ອຊາດ</label><input id="origin" class="form-control" value="ລາວ"></div>
-            <div class="col-md-2"><label class="form-label">ຊົນເຜົ່າ</label><input id="ethnicity" class="form-control"></div>
-            <div class="col-md-2"><label class="form-label">ສາສະໜາ</label><input id="religion" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ອາຊີບ</label><input id="occupation" class="form-control"></div>
+            <div class="col-md-2"><label class="form-label">ສັນຊາດ (Nationality)</label><select id="nationality" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ເຊື້ອຊາດ (Origin)</label><select id="origin" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ຊົນເຜົ່າ (Ethnicity)</label><select id="ethnicity" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ສາສະໜາ (Religion)</label><select id="religion" class="form-select"></select></div>
+            <div class="col-md-3"><label class="form-label">ອາຊີບ (Occupation)</label><select id="occupation" class="form-select"></select></div>
             <div class="col-md-3"><label class="form-label">ວັນອອກບັດ</label><input type="date" id="id_card_issue_date" class="form-control"></div>
           </div>
           <hr>
@@ -230,6 +249,16 @@ function saveRequest(mode) {
   });
 }
 
-$(function(){ loadDocFields(); });
+$(function(){
+  fillSelect('nationality', LOOKUP.country, 'ເລືອກສັນຊາດ');
+  fillSelect('origin', LOOKUP.country, 'ເລືອກເຊື້ອຊາດ');
+  fillSelect('ethnicity', LOOKUP.ethnicity, 'ເລືອກຊົນເຜົ່າ');
+  fillSelect('religion', LOOKUP.religion, 'ເລືອກສາສະໜາ');
+  fillSelect('occupation', LOOKUP.occupation, 'ເລືອກອາຊີບ');
+  // sensible default: Lao
+  if (document.getElementById('nationality')) document.getElementById('nationality').value = 'LA';
+  if (document.getElementById('origin')) document.getElementById('origin').value = 'LA';
+  loadDocFields();
+});
 </script>
 <?php include '../components/layout_footer.php'; ?>
