@@ -20,6 +20,7 @@ Thumbs.db
 
 # ── Local scratch / backups ──
 *.bak
+*.bak.*
 *~
 layout_server_backup.php
 layout_live.php
