@@ -13,7 +13,7 @@ $where = '';
 $params = [];
 if ($statusFilter) { $where = "WHERE d.status = ?"; $params[] = $statusFilter; }
 
-$sql = "SELECT d.*, di.name_lo AS item_name, di.doc_item_code, c.first_name, c.last_name,
+$sql = "SELECT d.*, di.name_lo AS item_name, di.doc_item_code, di.doc_type_id, c.first_name, c.last_name,
                v.name_lo AS village_name, t.name_lo AS taseng_name,
                (SELECT status FROM edoc_document_status WHERE doc_id = d.id ORDER BY id DESC LIMIT 1) AS last_status
         FROM edoc_document d
@@ -137,6 +137,9 @@ require '../components/layout.php';
                 <button class="btn btn-warning btn-sm" onclick="openDraftEntry(<?= $row['id'] ?>)"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
               <?php elseif ($row['status'] === 'SUBMITTED'): ?>
                 <button class="btn btn-primary btn-sm" onclick="openReview(<?= $row['id'] ?>)"><i class="fas fa-tasks"></i> ຈັດການ</button>
+              <?php endif; ?>
+              <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED'])): ?>
+                <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>
               <?php endif; ?>
             </td>
           </tr>
