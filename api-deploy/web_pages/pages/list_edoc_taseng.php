@@ -183,6 +183,10 @@ require '../components/layout.php';
 require '../modal/modal_form_edoc_taseng.php';
 require '../components/layout_footer.php';
 ?>
+<!-- DataTables (required for search/pagination) -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {
