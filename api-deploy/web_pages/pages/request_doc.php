@@ -39,29 +39,32 @@ if ($edit_doc_id) {
     }
 }
 
-$doc_type_id = !empty($_GET['doc_type_id']) ? (int)$_GET['doc_type_id'] : 0;
-$type = null;
-if ($doc_type_id) {
-    $t = $conn->prepare("SELECT id, doc_type_code, name_lo, name_en FROM edoc_doc_type WHERE id=? AND is_active=1");
-    $t->execute([$doc_type_id]);
-    $type = $t->fetch(PDO::FETCH_ASSOC);
-}
-if (!$type) {
-    echo '<div class="content-wrapper p-3"><div class="alert alert-warning">ບໍ່ພົບປະເພດເອກະສານ. <a href="select_doc_type.php">ເລືອກປະເພດ</a></div></div>';
-    include '../components/layout_footer.php';
-    exit;
-}
-// default doc_item for this type (explicit if provided, else first active item)
-$doc_item_id = !empty($_GET['doc_item_id']) ? (int)$_GET['doc_item_id'] : 0;
-if ($doc_item_id) {
-    $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE id=? AND doc_type_id=? AND is_active=1");
-    $item->execute([$doc_item_id, $doc_type_id]);
-    $item = $item->fetch(PDO::FETCH_ASSOC);
-}
-if (!$item) {
-    $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE doc_type_id=? AND is_active=1 ORDER BY id LIMIT 1");
-    $item->execute([$doc_type_id]);
-    $item = $item->fetch(PDO::FETCH_ASSOC);
+// new-request mode: resolve type/item from GET params (edit mode resolved them from the doc above)
+if (!$editData) {
+    $doc_type_id = !empty($_GET['doc_type_id']) ? (int)$_GET['doc_type_id'] : 0;
+    $type = null;
+    if ($doc_type_id) {
+        $t = $conn->prepare("SELECT id, doc_type_code, name_lo, name_en FROM edoc_doc_type WHERE id=? AND is_active=1");
+        $t->execute([$doc_type_id]);
+        $type = $t->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$type) {
+        echo '<div class="content-wrapper p-3"><div class="alert alert-warning">ບໍ່ພົບປະເພດເອກະສານ. <a href="select_doc_type.php">ເລືອກປະເພດ</a></div></div>';
+        include '../components/layout_footer.php';
+        exit;
+    }
+    // default doc_item for this type (explicit if provided, else first active item)
+    $doc_item_id = !empty($_GET['doc_item_id']) ? (int)$_GET['doc_item_id'] : 0;
+    if ($doc_item_id) {
+        $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE id=? AND doc_type_id=? AND is_active=1");
+        $item->execute([$doc_item_id, $doc_type_id]);
+        $item = $item->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$item) {
+        $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE doc_type_id=? AND is_active=1 ORDER BY id LIMIT 1");
+        $item->execute([$doc_type_id]);
+        $item = $item->fetch(PDO::FETCH_ASSOC);
+    }
 }
 // mode: 'draft' = normal New Request (allow save-as-draft), 'submit' = walk-in citizen request (submit only, becomes SUBMITTED)
 $mode = in_array(($_GET['mode'] ?? ''), ['draft','submit']) ? $_GET['mode'] : 'draft';
