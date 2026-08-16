@@ -11,26 +11,48 @@ $_current = 'list_edoc_village.php';
 $alert = $_SESSION['alert'] ?? null;
 unset($_SESSION['alert']);
 
-// Tasengs for dropdown
-$stmtTas = $conn->query("SELECT t.id, t.tas_code, t.name_lo AS tas_name, d.dist_code, d.name_lo AS dist_name, p.prov_code, p.name_lo AS prov_name
-                         FROM edoc_taseng t
-                         JOIN edoc_district d ON t.district_id = d.id
-                         JOIN edoc_province p ON d.province_id = p.id
-                         ORDER BY p.prov_code, d.dist_code, t.tas_code");
-$tasengs = $stmtTas->fetchAll(PDO::FETCH_ASSOC);
+// ── 3-level cascading filters: province -> district -> taseng ────────
+$provinceFilter = $_GET['province_id'] ?? '';
+$districtFilter = $_GET['district_id'] ?? '';
+$tasengFilter   = $_GET['tasseng_id']   ?? '';
 
-$tasengFilter = $_GET['tasseng_id'] ?? '';
-$where = '';
+// Provinces (all, names only)
+$provinces = $conn->query("SELECT id, prov_code, name_lo FROM edoc_province ORDER BY prov_code")->fetchAll(PDO::FETCH_ASSOC);
+
+// Districts: only when a province is chosen
+$districts = [];
+if ($provinceFilter) {
+    $st = $conn->prepare("SELECT d.id, d.dist_code, d.name_lo AS dist_name
+                          FROM edoc_district d WHERE d.province_id = ?
+                          ORDER BY d.dist_code");
+    $st->execute([$provinceFilter]);
+    $districts = $st->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Tasengs: only when a district is chosen
+$tasengs = [];
+if ($districtFilter) {
+    $st = $conn->prepare("SELECT t.id, t.tas_code, t.name_lo AS tas_name
+                          FROM edoc_taseng t WHERE t.district_id = ?
+                          ORDER BY t.tas_code");
+    $st->execute([$districtFilter]);
+    $tasengs = $st->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ── main list (province and/or district and/or taseng filter) ────────
+$where = [];
 $params = [];
-if ($tasengFilter) { $where = "WHERE v.tasseng_id = ?"; $params[] = $tasengFilter; }
+if ($provinceFilter) { $where[] = "p.id = ?";           $params[] = $provinceFilter; }
+if ($districtFilter) { $where[] = "d.id = ?";           $params[] = $districtFilter; }
+if ($tasengFilter)   { $where[] = "v.tasseng_id = ?";   $params[] = $tasengFilter; }
 
 $sql = "SELECT v.*, t.tas_code, t.name_lo AS tas_name, d.dist_code, d.name_lo AS dist_name, p.prov_code, p.name_lo AS prov_name
         FROM edoc_village v
         JOIN edoc_taseng t ON v.tasseng_id = t.id
         JOIN edoc_district d ON t.district_id = d.id
-        JOIN edoc_province p ON d.province_id = p.id
-        $where
-        ORDER BY p.prov_code, d.dist_code, t.tas_code, v.vil_code";
+        JOIN edoc_province p ON d.province_id = p.id";
+if ($where) $sql .= " WHERE " . implode(" AND ", $where);
+$sql .= " ORDER BY p.prov_code, d.dist_code, t.tas_code, v.vil_code";
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $villages = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -91,15 +113,46 @@ require '../components/layout.php';
     </div>
   </div>
 
-  <div class="row mb-3">
-    <div class="col-md-5">
-      <select id="tasengFilter" class="form-select" onchange="filterByTaseng()">
-        <option value="">ທຸກຕາແສງ</option>
-        <?php foreach ($tasengs as $t): ?>
-          <option value="<?= $t['id'] ?>" <?= $tasengFilter == $t['id'] ? 'selected' : '' ?>>
-            [<?= htmlspecialchars($t['prov_code']) ?>-<?= htmlspecialchars($t['dist_code']) ?>-<?= htmlspecialchars($t['tas_code']) ?>] <?= htmlspecialchars($t['tas_name']) ?>
+  <div class="row g-2 mb-3">
+    <div class="col-md-4">
+      <label class="form-label mb-1">ແຂວງ (Province)</label>
+      <select id="provinceFilter" class="form-select" onchange="filterGeo('province')">
+        <option value="">-- ທຸກແຂວງ --</option>
+        <?php foreach ($provinces as $p): ?>
+          <option value="<?= $p['id'] ?>" <?= $provinceFilter == $p['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars($p['name_lo']) ?>
           </option>
         <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label mb-1">ເມືອງ (District)</label>
+      <select id="districtFilter" class="form-select" onchange="filterGeo('district')" <?= $provinceFilter ? '' : 'disabled' ?>>
+        <?php if (!$provinceFilter): ?>
+        <option value="">-- ເລືອກແຂວງກ່ອນ --</option>
+        <?php else: ?>
+        <option value="">-- ທຸກເມືອງ --</option>
+        <?php foreach ($districts as $d): ?>
+          <option value="<?= $d['id'] ?>" <?= $districtFilter == $d['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars($d['dist_name']) ?>
+          </option>
+        <?php endforeach; ?>
+        <?php endif; ?>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label mb-1">ຕາແສງ (Taseng)</label>
+      <select id="tasengFilter" class="form-select" onchange="filterGeo('taseng')" <?= $districtFilter ? '' : 'disabled' ?>>
+        <?php if (!$districtFilter): ?>
+        <option value="">-- ເລືອກເມືອງກ່ອນ --</option>
+        <?php else: ?>
+        <option value="">-- ທຸກຕາແສງ --</option>
+        <?php foreach ($tasengs as $t): ?>
+          <option value="<?= $t['id'] ?>" <?= $tasengFilter == $t['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars($t['tas_name']) ?>
+          </option>
+        <?php endforeach; ?>
+        <?php endif; ?>
       </select>
     </div>
   </div>
@@ -111,8 +164,10 @@ require '../components/layout.php';
           <tr>
             <th width="5%" class="text-center">ລຳດັບ</th>
             <th width="9%" class="text-center">ລະຫັດ</th>
-            <th width="9%" class="text-center">nCode</th>
-            <th width="15%" class="text-center">ຕາແສງ</th>
+            <th width="7%" class="text-center">nCode</th>
+            <th width="13%">ແຂວງ</th>
+            <th width="13%">ເມືອງ</th>
+            <th width="13%">ຕາແສງ</th>
             <th>ຊື່ບ້ານ (ພາສາລາວ)</th>
             <th>ຊື່ບ້ານ (ພາສາອັງກິດ)</th>
             <th width="5%" class="text-center">ແກ້ໄຂ</th>
@@ -125,7 +180,9 @@ require '../components/layout.php';
             <td class="text-center"><?= $i + 1 ?></td>
             <td class="text-center"><span class="code-badge"><?= htmlspecialchars($row['vil_code']) ?></span></td>
             <td class="text-center"><?= htmlspecialchars($row['ncode'] ?? '-') ?></td>
-            <td class="text-center"><?= htmlspecialchars($row['tas_code']) ?></td>
+            <td><?= htmlspecialchars($row['prov_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['prov_code']) ?>]</small></td>
+            <td><?= htmlspecialchars($row['dist_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['dist_code']) ?>]</small></td>
+            <td><?= htmlspecialchars($row['tas_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['tas_code']) ?>]</small></td>
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
             <td class="text-center">
@@ -137,7 +194,7 @@ require '../components/layout.php';
           </tr>
           <?php endforeach; ?>
           <?php if (empty($villages)): ?>
-          <tr><td colspan="9" class="text-center py-5" style="color:#aaa;"><i class="fas fa-folder-open fa-2x mb-2 d-block"></i> ຍັງບໍ່ມີຂໍ້ມູນບ້ານ</td></tr>
+          <tr><td colspan="10" class="text-center py-5" style="color:#aaa;"><i class="fas fa-folder-open fa-2x mb-2 d-block"></i> ຍັງບໍ່ມີຂໍ້ມູນບ້ານ</td></tr>
           <?php endif; ?>
         </tbody>
       </table>
@@ -152,6 +209,10 @@ require '../components/layout.php';
 require '../modal/modal_form_edoc_village.php';
 require '../components/layout_footer.php';
 ?>
+<!-- DataTables (required for search/pagination) -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -162,9 +223,16 @@ $(document).ready(function() {
     $('#searchVillage').on('keyup', function() { table.search(this.value).draw(); });
 });
 
-function filterByTaseng() {
+// 3-level cascading filter: province -> district -> taseng
+function filterGeo(level) {
+    var p = $('#provinceFilter').val();
+    var d = $('#districtFilter').val();
     var t = $('#tasengFilter').val();
-    window.location.href = 'list_edoc_village.php' + (t ? '?tasseng_id=' + t : '');
+    var qs = [];
+    if (level === 'province') { if (p) qs.push('province_id=' + p); }
+    else if (level === 'district') { if (p) qs.push('province_id=' + p); if (d) qs.push('district_id=' + d); }
+    else if (level === 'taseng') { if (p) qs.push('province_id=' + p); if (d) qs.push('district_id=' + d); if (t) qs.push('tasseng_id=' + t); }
+    window.location.href = 'list_edoc_village.php' + (qs.length ? '?' + qs.join('&') : '');
 }
 
 function openAddVillage() {
