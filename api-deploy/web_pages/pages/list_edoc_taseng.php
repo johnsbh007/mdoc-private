@@ -24,7 +24,7 @@ $provinces = $conn->query("SELECT p.id, p.prov_code, p.name_lo,
 // Only meaningful when a province is chosen — otherwise the dropdown is disabled.
 $districts = [];
 if ($provinceFilter) {
-    $distSql = "SELECT d.id, d.dist_code, d.name_lo, d.province_id, p.prov_code, p.name_lo AS prov_name,
+    $distSql = "SELECT d.id, d.dist_code, d.name_lo AS dist_name, d.province_id, p.prov_code, p.name_lo AS prov_name,
                        (SELECT COUNT(*) FROM edoc_taseng t WHERE t.district_id=d.id) AS tas_cnt
                 FROM edoc_district d JOIN edoc_province p ON d.province_id=p.id
                 WHERE d.province_id = ?
