@@ -134,7 +134,7 @@ require '../components/layout.php';
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
             <td class="text-center">
               <?php if ($row['status'] === 'DRAFT'): ?>
-                <button class="btn btn-warning btn-sm" onclick="openDraftEntry(<?= $row['id'] ?>)"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
+                <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
               <?php elseif ($row['status'] === 'SUBMITTED'): ?>
                 <button class="btn btn-primary btn-sm" onclick="openReview(<?= $row['id'] ?>)"><i class="fas fa-tasks"></i> ຈັດການ</button>
               <?php endif; ?>

@@ -7,6 +7,38 @@ $pageTitle = "ຄຳຮ້ອງໃໝ່ - New Request";
 $_current = 'request_doc.php';
 include '../components/layout.php';
 
+// edit mode: load an existing draft on the same 2-tab page (same data as add-new)
+$edit_doc_id = !empty($_GET['doc_id']) ? (int)$_GET['doc_id'] : 0;
+$editData = null;   // joined citizen + doc (+ doc_type/item)
+$editForm = [];     // field_id => saved value
+if ($edit_doc_id) {
+    $st = $conn->prepare("SELECT c.*, d.doc_no, d.status, d.amount, di.doc_type_id, di.id AS doc_item_id
+                          FROM edoc_document d
+                          JOIN edoc_doc_item di ON d.doc_item_id = di.id
+                          JOIN edoc_citizen c ON d.citizen_id = c.id
+                          WHERE d.id = ?");
+    $st->execute([$edit_doc_id]);
+    $editData = $st->fetch(PDO::FETCH_ASSOC);
+    if ($editData) {
+        $pageTitle = "ແກ້ໄຂຮ່າງ - Edit Draft";
+        // resolve type/item from the doc itself
+        $doc_type_id = (int)$editData['doc_type_id'];
+        $t = $conn->prepare("SELECT id, doc_type_code, name_lo, name_en FROM edoc_doc_type WHERE id=? AND is_active=1");
+        $t->execute([$doc_type_id]);
+        $type = $t->fetch(PDO::FETCH_ASSOC);
+        $doc_item_id = (int)$editData['doc_item_id'];
+        $item = $conn->prepare("SELECT id, doc_type_id, doc_item_code, name_lo FROM edoc_doc_item WHERE id=? AND is_active=1");
+        $item->execute([$doc_item_id]);
+        $item = $item->fetch(PDO::FETCH_ASSOC);
+        // saved doc-type field values
+        $fd = $conn->prepare("SELECT field_id, field_value FROM edoc_form_data WHERE doc_id=?");
+        $fd->execute([$edit_doc_id]);
+        foreach ($fd->fetchAll(PDO::FETCH_ASSOC) as $f) {
+            $editForm['field_' . $f['field_id']] = $f['field_value'];
+        }
+    }
+}
+
 $doc_type_id = !empty($_GET['doc_type_id']) ? (int)$_GET['doc_type_id'] : 0;
 $type = null;
 if ($doc_type_id) {
@@ -118,21 +150,34 @@ function presetGeo(prefix, c) {
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb mb-2">
       <li class="breadcrumb-item"><a href="list_edoc_document.php">ບໍລິການເອກະສານ</a></li>
+      <?php if ($editData): ?>
+      <li class="breadcrumb-item"><a href="list_edoc_document.php?status=DRAFT">ຮ່າງຄຳຮ້ອງ</a></li>
+      <li class="breadcrumb-item active" aria-current="page">ແກ້ໄຂຮ່າງ: <?= htmlspecialchars($item['name_lo']) ?></li>
+      <?php else: ?>
       <li class="breadcrumb-item"><a href="select_doc_type.php">ເລືອກປະເພດ</a></li>
       <li class="breadcrumb-item"><a href="select_doc_type.php"><?= htmlspecialchars($type['name_lo']) ?></a></li>
       <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($item['name_lo']) ?></li>
+      <?php endif; ?>
     </ol>
   </nav>
 
   <div class="card">
     <div class="card-header bg-primary text-white">
-      <?= $isSubmit ? 'ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)' : 'ຄຳຮ້ອງໃໝ່: ' . htmlspecialchars($item['name_lo']) ?>
+      <?php if ($editData): ?>
+        ແກ້ໄຂຮ່າງ (Edit Draft): <?= htmlspecialchars($item['name_lo']) ?>
+        <span class="badge bg-light text-dark">[<?= htmlspecialchars($editData['doc_no'] ?? '') ?>]</span>
+      <?php elseif ($isSubmit): ?>
+        ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)
+      <?php else: ?>
+        ຄຳຮ້ອງໃໝ່: <?= htmlspecialchars($item['name_lo']) ?>
+      <?php endif; ?>
       <span class="badge bg-light text-dark">[<?= htmlspecialchars($type['doc_type_code']) ?>]</span>
     </div>
     <div class="card-body">
       <!-- hidden shared fields -->
       <input type="hidden" id="doc_type_id" value="<?= $type['id'] ?>">
       <input type="hidden" id="doc_item_id" value="<?= $item['id'] ?>">
+      <input type="hidden" id="doc_hidden_id" value="<?= $edit_doc_id ?>">
       <input type="hidden" id="citizen_id" value="">
 
       <ul class="nav nav-tabs mb-3" id="reqTabs" role="tablist">
@@ -232,10 +277,10 @@ function presetGeo(prefix, c) {
 
       <div class="d-flex gap-2 mt-3">
         <?php if (!$isSubmit): ?>
-        <button class="btn btn-secondary" onclick="saveRequest('draft')"><i class="fas fa-save"></i> ບັນທຶກເປັນຮ່າງ (Draft)</button>
+        <button class="btn btn-secondary" onclick="saveRequest('draft')"><i class="fas fa-save"></i> <?= $editData ? 'ບັນທຶກຮ່າງ (Save Draft)' : 'ບັນທຶກເປັນຮ່າງ (Draft)' ?></button>
         <?php endif; ?>
-        <button class="btn btn-primary" onclick="saveRequest('submit')"><i class="fas fa-paper-plane"></i> <?= $isSubmit ? 'ບັນທຶກຄຳຮ້ອງ (Submit)' : 'ສົ່ງຄຳຮ້ອງ (Submit)' ?></button>
-        <a href="select_doc_type.php?mode=<?= $mode ?>" class="btn btn-light border">ຍົກເລິກ</a>
+        <button class="btn btn-primary" onclick="saveRequest('submit')"><i class="fas fa-paper-plane"></i> <?= $editData ? 'ສົ່ງຄຳຮ້ອງ (Submit)' : ($isSubmit ? 'ບັນທຶກຄຳຮ້ອງ (Submit)' : 'ສົ່ງຄຳຮ້ອງ (Submit)') ?></button>
+        <a href="<?= $editData ? 'list_edoc_document.php?status=DRAFT' : 'select_doc_type.php?mode=' . $mode ?>" class="btn btn-light border">ຍົກເລິກ</a>
       </div>
     </div>
   </div>
@@ -244,6 +289,10 @@ function presetGeo(prefix, c) {
 <script>
 const DOC_TYPE_ID = <?= $type['id'] ?>;
 const DOC_ITEM_ID = <?= $item['id'] ?>;
+// edit mode: loaded draft data (citizen fields + geo codes) and saved doc-type field values
+const EDIT_DATA = <?= $editData ? json_encode($editData, JSON_UNESCAPED_UNICODE) : 'null' ?>;
+const EDIT_FORM = <?= json_encode($editForm, JSON_UNESCAPED_UNICODE) ?>;
+const EDIT_DOC_ID = <?= $edit_doc_id ?>;
 
 // parseJson helper (jQuery auto-parses JSON responses)
 function parseJson(res){ return (typeof res==='object' && res!==null) ? res : (()=>{try{return JSON.parse(res)}catch(e){return null}})(); }
@@ -296,6 +345,13 @@ function loadDocFields() {
       }
     });
     document.getElementById('docFields').innerHTML = h;
+    // edit mode: prefill saved doc-type field values
+    if (EDIT_FORM && Object.keys(EDIT_FORM).length) {
+      Object.entries(EDIT_FORM).forEach(([name, val]) => {
+        const el = document.querySelector('#docFields [name="' + name + '"]');
+        if (el) el.value = val;
+      });
+    }
   });
 }
 
@@ -303,6 +359,7 @@ function saveRequest(mode) {
   const data = {
     mode,
     doc_item_id: DOC_ITEM_ID,
+    id: EDIT_DOC_ID || 0,  // >0 = update existing draft, 0 = new
     citizen_id: document.getElementById('citizen_id').value || 0,
     manual_id_card: document.getElementById('nid').value,
     manual_first_name: document.getElementById('first_name').value,
@@ -360,6 +417,12 @@ $(function(){
   // sensible default: Lao
   if (document.getElementById('nationality')) document.getElementById('nationality').value = 'LA';
   if (document.getElementById('origin')) document.getElementById('origin').value = 'LA';
+  // edit mode: prefill person data from the loaded draft
+  if (EDIT_DATA) {
+    if (EDIT_DATA.id_card) document.getElementById('nid').value = EDIT_DATA.id_card;
+    fillPerson(EDIT_DATA);
+    document.getElementById('nidMsg').textContent = 'ແກ້ໄຂຮ່າງ: ' + (EDIT_DATA.first_name || '') + ' ' + (EDIT_DATA.last_name || '');
+  }
   loadDocFields();
 });
 </script>
