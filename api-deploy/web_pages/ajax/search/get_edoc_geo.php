@@ -6,7 +6,7 @@ require '../../connect.php';
 $type = $_GET['type'] ?? '';
 $id   = $_GET['id'] ?? '';
 $allowed = ['province' => 'edoc_district', 'district' => 'edoc_taseng', 'taseng' => 'edoc_village'];
-$parentCol = ['province' => 'province_id', 'district' => 'district_id', 'taseng' => 'taseng_id'];
+$parentCol = ['province' => 'province_id', 'district' => 'district_id', 'taseng' => 'tasseng_id'];
 if (!isset($allowed[$type]) || !$id) { echo json_encode(['status' => 'error', 'message' => 'bad params']); exit; }
 try {
     $col = $parentCol[$type];
