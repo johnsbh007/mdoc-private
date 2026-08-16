@@ -20,16 +20,19 @@ $provinces = $conn->query("SELECT p.id, p.prov_code, p.name_lo,
                                   (SELECT COUNT(*) FROM edoc_taseng t JOIN edoc_district d ON t.district_id=d.id WHERE d.province_id=p.id) AS tas_cnt
                            FROM edoc_province p ORDER BY p.prov_code")->fetchAll(PDO::FETCH_ASSOC);
 
-// Districts (filtered by province when selected) with taseng counts
-$distSql = "SELECT d.id, d.dist_code, d.name_lo, d.province_id, p.prov_code, p.name_lo AS prov_name,
-                   (SELECT COUNT(*) FROM edoc_taseng t WHERE t.district_id=d.id) AS tas_cnt
-            FROM edoc_district d JOIN edoc_province p ON d.province_id=p.id";
-$distParams = [];
-if ($provinceFilter) { $distSql .= " WHERE d.province_id = ?"; $distParams[] = $provinceFilter; }
-$distSql .= " ORDER BY p.prov_code, d.dist_code";
-$distStmt = $conn->prepare($distSql);
-$distStmt->execute($distParams);
-$districts = $distStmt->fetchAll(PDO::FETCH_ASSOC);
+// Districts (filtered by province when selected) with taseng counts.
+// Only meaningful when a province is chosen — otherwise the dropdown is disabled.
+$districts = [];
+if ($provinceFilter) {
+    $distSql = "SELECT d.id, d.dist_code, d.name_lo, d.province_id, p.prov_code, p.name_lo AS prov_name,
+                       (SELECT COUNT(*) FROM edoc_taseng t WHERE t.district_id=d.id) AS tas_cnt
+                FROM edoc_district d JOIN edoc_province p ON d.province_id=p.id
+                WHERE d.province_id = ?
+                ORDER BY p.prov_code, d.dist_code";
+    $distStmt = $conn->prepare($distSql);
+    $distStmt->execute([$provinceFilter]);
+    $districts = $distStmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // ── main list (province and/or district filter) ─────────────────────
 $where = [];
@@ -118,7 +121,10 @@ require '../components/layout.php';
     </div>
     <div class="col-md-6">
       <label class="form-label mb-1">ເມືອງ (District)</label>
-      <select id="districtFilter" class="form-select" onchange="filterGeo('district')">
+      <select id="districtFilter" class="form-select" onchange="filterGeo('district')" <?= $provinceFilter ? '' : 'disabled' ?>>
+        <?php if (!$provinceFilter): ?>
+        <option value="">-- ເລືອກແຂວງກ່ອນ --</option>
+        <?php else: ?>
         <option value="">-- ທຸກເມືອງ --</option>
         <?php foreach ($districts as $d): ?>
           <option value="<?= $d['id'] ?>" <?= $districtFilter == $d['id'] ? 'selected' : '' ?>>
@@ -126,6 +132,7 @@ require '../components/layout.php';
             (<?= (int)$d['tas_cnt'] ?> ຕາແສງ)
           </option>
         <?php endforeach; ?>
+        <?php endif; ?>
       </select>
     </div>
   </div>
