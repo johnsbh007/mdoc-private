@@ -113,8 +113,7 @@ require '../components/layout.php';
         <option value="">-- ທຸກແຂວງ --</option>
         <?php foreach ($provinces as $p): ?>
           <option value="<?= $p['id'] ?>" <?= $provinceFilter == $p['id'] ? 'selected' : '' ?>>
-            [<?= htmlspecialchars($p['prov_code']) ?>] <?= htmlspecialchars($p['name_lo']) ?>
-            (<?= (int)$p['tas_cnt'] ?> ຕາແສງ)
+            <?= htmlspecialchars($p['name_lo']) ?>
           </option>
         <?php endforeach; ?>
       </select>
@@ -128,8 +127,7 @@ require '../components/layout.php';
         <option value="">-- ທຸກເມືອງ --</option>
         <?php foreach ($districts as $d): ?>
           <option value="<?= $d['id'] ?>" <?= $districtFilter == $d['id'] ? 'selected' : '' ?>>
-            [<?= htmlspecialchars($d['prov_code']) ?>-<?= htmlspecialchars($d['dist_code']) ?>] <?= htmlspecialchars($d['dist_name']) ?>
-            (<?= (int)$d['tas_cnt'] ?> ຕາແສງ)
+            <?= htmlspecialchars($d['dist_name']) ?>
           </option>
         <?php endforeach; ?>
         <?php endif; ?>
