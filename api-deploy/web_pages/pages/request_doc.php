@@ -56,6 +56,8 @@ const PROVINCES = <?= json_encode(array_column($provinces, 'name_lo', 'id'), JSO
 function optgroup(label, map){ let h='<option value="">-- '+label+' --</option>'; for(const k in map){ h+='<option value="'+k+'">'+map[k]+'</option>'; } return h; }
 function fillSelect(id, map, label){ const el=document.getElementById(id); if(el){ el.innerHTML = optgroup(label, map); } }
 // cascading geo: parentId -> childId (province->district->taseng->village) via get_edoc_geo.php
+// geoType normalizes both current-address and birth_ prefixed ids
+function geoType(id){ const n = id.replace(/^birth_/, ''); return {province_id:'province', district_id:'district', taseng_id:'taseng'}[n] || 'province'; }
 function loadGeo(parentId, childId) {
   const parent = document.getElementById(parentId);
   const child  = document.getElementById(childId);
@@ -70,7 +72,7 @@ function loadGeo(parentId, childId) {
     curId = GEO_CHAIN[curId];
   }
   if (!pid) return;
-  const type = {province_id:'province', district_id:'district', taseng_id:'taseng'}[parentId] || 'province';
+  const type = geoType(parentId);
   $.get('../ajax/search/get_edoc_geo.php', {type, id: pid}, function(res){
     const r = parseJson(res);
     if (!r || r.status !== 'success') return;
@@ -96,7 +98,7 @@ function presetGeo(prefix, c) {
     if (!child) return;
     child.innerHTML = '<option value="">-- ເລືອກ --</option>';
     if (!pid || !pid.value) return;
-    const type = {province_id:'province', district_id:'district', taseng_id:'taseng'}[pid.id] || 'province';
+    const type = geoType(pid.id);
     $.get('../ajax/search/get_edoc_geo.php', {type, id: pid.value}, function(res){
       const r = parseJson(res);
       if (!r || r.status !== 'success') return;
