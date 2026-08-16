@@ -36,6 +36,20 @@ $ethnicityName  = resolveName($conn, 'edoc_ethnicity',  $row['ethnicity']);
 $religionName   = resolveName($conn, 'edoc_religion',   $row['religion']);
 $occupationName = resolveName($conn, 'edoc_occupation', $row['occupation']);
 
+// resolve geo names: prefer ID joins, fall back to legacy free-text columns
+function geoName($conn, $table, $id, $fallback) {
+  if ($id) {
+    $st = $conn->prepare("SELECT name_lo FROM $table WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    $n = $st->fetchColumn();
+    if ($n !== false) return $n;
+  }
+  return $fallback ?: '';
+}
+$birthVillageName  = geoName($conn, 'edoc_village',  $row['birth_village_id']  ?? null, $row['birth_village']);
+$birthDistrictName = geoName($conn, 'edoc_district', $row['birth_district_id'] ?? null, $row['birth_district']);
+$birthProvinceName = geoName($conn, 'edoc_province', $row['birth_province_id'] ?? null, $row['birth_province']);
+
 function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
 
 $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ? 'ນາງ' : '');
@@ -127,8 +141,8 @@ $opsByAnchor = [
   '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
   'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
   'ທ້າວ ຫຼື ນາງ' => [['phrase', 'ທ້າວ ຫຼື ນາງ', $title], ['dots', 'ທ້າວ', $row['first_name']], ['dots', 'ນາມສະກຸນ', $row['last_name']]],
-  'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $row['birth_village']], ['dots', 'ເມືອງ', $row['birth_district']]],
-  'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $row['birth_province']], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
+  'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ເມືອງ', $birthDistrictName]],
+  'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
   'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ບ້ານ', $row['village_name']]],
   'ສໍາມະໂນຄົວ' => [['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $res['household_book_no'] ?? ''], ['dots', 'ລົງວັນທີ', fmtDate($res['household_book_date'] ?? '')]],
   'ເບີໂທລະສັບ' => [['dots', 'ເບີໂທລະສັບ', $row['phone']], ['dots', 'ເປັນລູກຂອງທ້າວ', $res['father_name'] ?? '']],

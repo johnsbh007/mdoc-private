@@ -10,8 +10,10 @@ if (empty($nid)) { echo json_encode(['status' => 'error', 'message' => 'Missing 
 try {
     $stmt = $conn->prepare("SELECT id, first_name, last_name, full_name, id_card, gender, dob, phone, email,
                                    nationality, origin, ethnicity, religion, occupation,
-                                   village_id, address_line, birth_village, birth_district,
-                                   birth_province, id_card_issue_date, house_no, unit_no
+                                   village_id, province_id, district_id, taseng_id, address_line,
+                                   birth_village, birth_district, birth_province,
+                                   birth_village_id, birth_district_id, birth_taseng_id, birth_province_id,
+                                   id_card_issue_date, house_no, unit_no
                             FROM edoc_citizen WHERE id_card = ? LIMIT 1");
     $stmt->execute([$nid]);
     $c = $stmt->fetch(PDO::FETCH_ASSOC);

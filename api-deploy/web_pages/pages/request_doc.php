@@ -51,8 +51,65 @@ const LOOKUP = {
   religion:  <?= json_encode(array_column($religions, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>,
   occupation:<?= json_encode(array_column($occupations, 'name_lo', 'code'), JSON_UNESCAPED_UNICODE) ?>
 };
+// provinces for the 4-level geo cascade (id -> name)
+const PROVINCES = <?= json_encode(array_column($provinces, 'name_lo', 'id'), JSON_UNESCAPED_UNICODE) ?>;
 function optgroup(label, map){ let h='<option value="">-- '+label+' --</option>'; for(const k in map){ h+='<option value="'+k+'">'+map[k]+'</option>'; } return h; }
 function fillSelect(id, map, label){ const el=document.getElementById(id); if(el){ el.innerHTML = optgroup(label, map); } }
+// cascading geo: parentId -> childId (province->district->taseng->village) via get_edoc_geo.php
+function loadGeo(parentId, childId) {
+  const parent = document.getElementById(parentId);
+  const child  = document.getElementById(childId);
+  if (!parent || !child) return;
+  const pid = parent.value;
+  // clear child and all its descendants (via GEO_CHAIN map)
+  let curId = childId;
+  while (curId) {
+    const el = document.getElementById(curId);
+    if (!el) break;
+    el.innerHTML = '<option value="">-- ເລືອກ --</option>';
+    curId = GEO_CHAIN[curId];
+  }
+  if (!pid) return;
+  const type = {province_id:'province', district_id:'district', taseng_id:'taseng'}[parentId] || 'province';
+  $.get('../ajax/search/get_edoc_geo.php', {type, id: pid}, function(res){
+    const r = parseJson(res);
+    if (!r || r.status !== 'success') return;
+    let h = '<option value="">-- ເລືອກ --</option>';
+    r.data.forEach(o => { h += '<option value="'+o.id+'">'+o.name_lo+'</option>'; });
+    child.innerHTML = h;
+  });
+}
+const GEO_CHAIN = { province_id:'district_id', district_id:'taseng_id', taseng_id:'village_id',
+                    birth_province_id:'birth_district_id', birth_district_id:'birth_taseng_id', birth_taseng_id:'birth_village_id' };
+// preset the whole cascade from stored codes (NID lookup / edit)
+function presetGeo(prefix, c) {
+  const ids = [prefix+'province_id', prefix+'district_id', prefix+'taseng_id', prefix+'village_id'];
+  const vals = [c[prefix+'province_id'], c[prefix+'district_id'], c[prefix+'taseng_id'], c[prefix+'village_id']];
+  const el0 = document.getElementById(ids[0]);
+  if (!el0) return;
+  el0.value = vals[0] || '';
+  let idx = 1;
+  function next() {
+    if (idx >= ids.length) return;
+    const pid = document.getElementById(ids[idx-1]);
+    const child = document.getElementById(ids[idx]);
+    if (!child) return;
+    child.innerHTML = '<option value="">-- ເລືອກ --</option>';
+    if (!pid || !pid.value) return;
+    const type = {province_id:'province', district_id:'district', taseng_id:'taseng'}[pid.id] || 'province';
+    $.get('../ajax/search/get_edoc_geo.php', {type, id: pid.value}, function(res){
+      const r = parseJson(res);
+      if (!r || r.status !== 'success') return;
+      let h = '<option value="">-- ເລືອກ --</option>';
+      r.data.forEach(o => { h += '<option value="'+o.id+'">'+o.name_lo+'</option>'; });
+      child.innerHTML = h;
+      child.value = vals[idx] || '';
+      idx++;
+      next();
+    });
+  }
+  next();
+}
 </script>
 
 <div class="content-wrapper p-3">
@@ -123,17 +180,45 @@ function fillSelect(id, map, label){ const el=document.getElementById(id); if(el
           <hr>
           <h6>ທີ່ຢູ່ປັດຈຸບັນ (Current address)</h6>
           <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label">ແຂວງ (Province)</label>
+              <select id="province_id" class="form-select" onchange="loadGeo('province_id','district_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ເມືອງ (District)</label>
+              <select id="district_id" class="form-select" onchange="loadGeo('district_id','taseng_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ຕາແສງ (Taseng)</label>
+              <select id="taseng_id" class="form-select" onchange="loadGeo('taseng_id','village_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ບ້ານ (Village)</label>
+              <select id="village_id" class="form-select"></select>
+            </div>
             <div class="col-md-2"><label class="form-label">ເລກບ້ານ</label><input id="house_no" class="form-control"></div>
             <div class="col-md-2"><label class="form-label">ໜ່ວຍ</label><input id="unit_no" class="form-control"></div>
-            <div class="col-md-2"><label class="form-label">ບ້ານ</label><input id="village_id" class="form-control"></div>
             <div class="col-md-3"><label class="form-label">ທີ່ຢູ່ເພີ່ມເຕີມ</label><input id="address_line" class="form-control"></div>
           </div>
           <hr>
           <h6>ສະຖານທີ່ເກີດ (Birth place)</h6>
           <div class="row g-2">
-            <div class="col-md-3"><label class="form-label">ບ້ານເກີດ</label><input id="birth_village" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ເມືອງເກີດ</label><input id="birth_district" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ແຂວງເກີດ</label><input id="birth_province" class="form-control"></div>
+            <div class="col-md-3">
+              <label class="form-label">ແຂວງເກີດ (Province)</label>
+              <select id="birth_province_id" class="form-select" onchange="loadGeo('birth_province_id','birth_district_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ເມືອງເກີດ (District)</label>
+              <select id="birth_district_id" class="form-select" onchange="loadGeo('birth_district_id','birth_taseng_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ຕາແສງເກີດ (Taseng)</label>
+              <select id="birth_taseng_id" class="form-select" onchange="loadGeo('birth_taseng_id','birth_village_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ບ້ານເກີດ (Village)</label>
+              <select id="birth_village_id" class="form-select"></select>
+            </div>
           </div>
         </div>
 
@@ -179,12 +264,15 @@ function lookupNid() {
 function fillPerson(c) {
   const map = {first_name:'first_name',last_name:'last_name',gender:'gender',dob:'dob',phone:'phone',email:'email',
     nationality:'nationality',origin:'origin',ethnicity:'ethnicity',religion:'religion',occupation:'occupation',
-    id_card_issue_date:'id_card_issue_date',house_no:'house_no',unit_no:'unit_no',village_id:'village_id',
-    address_line:'address_line',birth_village:'birth_village',birth_district:'birth_district',birth_province:'birth_province'};
+    id_card_issue_date:'id_card_issue_date',house_no:'house_no',unit_no:'unit_no',
+    address_line:'address_line'};
   for (const [id,k] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (el && c[k] != null) el.value = c[k];
   }
+  // 4-level geo cascades (current address + birth place) — preset from stored codes
+  presetGeo('', c);        // province_id/district_id/taseng_id/village_id
+  presetGeo('birth_', c);  // birth_province_id/birth_district_id/birth_taseng_id/birth_village_id
   document.getElementById('citizen_id').value = c.id || '';
 }
 
@@ -229,11 +317,15 @@ function saveRequest(mode) {
     id_card_issue_date: document.getElementById('id_card_issue_date').value,
     house_no: document.getElementById('house_no').value,
     unit_no: document.getElementById('unit_no').value,
+    province_id: document.getElementById('province_id').value || null,
+    district_id: document.getElementById('district_id').value || null,
+    taseng_id: document.getElementById('taseng_id').value || null,
     village_id: document.getElementById('village_id').value || null,
     manual_address_line: document.getElementById('address_line').value,
-    birth_village: document.getElementById('birth_village').value,
-    birth_district: document.getElementById('birth_district').value,
-    birth_province: document.getElementById('birth_province').value,
+    birth_province_id: document.getElementById('birth_province_id').value || null,
+    birth_district_id: document.getElementById('birth_district_id').value || null,
+    birth_taseng_id: document.getElementById('birth_taseng_id').value || null,
+    birth_village_id: document.getElementById('birth_village_id').value || null,
   };
   // doc-type fields
   document.querySelectorAll('#docFields [name^="field_"]').forEach(el => { data[el.name] = el.value; });
@@ -260,6 +352,9 @@ $(function(){
   fillSelect('ethnicity', LOOKUP.ethnicity, 'ເລືອກຊົນເຜົ່າ');
   fillSelect('religion', LOOKUP.religion, 'ເລືອກສາສະໜາ');
   fillSelect('occupation', LOOKUP.occupation, 'ເລືອກອາຊີບ');
+  // 4-level geo cascade: province options (children load on change)
+  fillSelect('province_id', PROVINCES, 'ເລືອກແຂວງ');
+  fillSelect('birth_province_id', PROVINCES, 'ເລືອກແຂວງ');
   // sensible default: Lao
   if (document.getElementById('nationality')) document.getElementById('nationality').value = 'LA';
   if (document.getElementById('origin')) document.getElementById('origin').value = 'LA';
