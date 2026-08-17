@@ -78,3 +78,11 @@ The **mDoc Citizen API** is deployed on apis.com.la and verified with live reque
 - **Local mirror**: `D:\m-doc-taseng\api-deploy\` — keep in sync when iterating.
 
 See `6-openapi-spec.yaml` (contract) and `5-service_layer_plan.md` (architecture).
+
+## 4. The Citizen Request Lifecycle
+
+The end-to-end flow — from citizen intake (mobile app later / walk-in now) through
+office processing, fee payment, signing, up to delivery of the certificate or letter —
+is defined in **`7-request_lifecycle_flow.md`**. It also documents the hard boundary
+with the colleague's budget/accounting track (we touch only `edoc_*`; never the
+`ap_`/`gen_`/`acc_`/`payment_` side).
