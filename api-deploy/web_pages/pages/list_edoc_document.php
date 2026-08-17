@@ -135,8 +135,8 @@ require '../components/layout.php';
             <td class="text-center">
               <?php if ($row['status'] === 'DRAFT'): ?>
                 <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
-              <?php elseif ($row['status'] === 'SUBMITTED'): ?>
-                <button class="btn btn-primary btn-sm" onclick="openReview(<?= $row['id'] ?>)"><i class="fas fa-tasks"></i> ຈັດການ</button>
+              <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
+                <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
               <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED'])): ?>
                 <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>

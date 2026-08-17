@@ -28,8 +28,9 @@ try {
             if ($doc['status'] === 'SUBMITTED') {
                 $newStatus = 'PENDING_APPROVAL';
                 // staff verifies the submitted data, then it goes to approval
-                $conn->prepare("UPDATE edoc_document SET status=?, verified_by=?, verified_at=NOW() WHERE id=?")
-                      ->execute([$newStatus, $changed_by, $id]);
+                // (audit trail via edoc_document_status below; verified_by not in schema)
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")
+                      ->execute([$newStatus, $id]);
                 $msg = 'ຢືນຢັນຂໍ້ມູນສຳເລັດ (ສົ່ງອະນຸມັດ)';
             } else if ($doc['status'] === 'PENDING_APPROVAL') {
                 $newStatus = 'ISSUED'; // approved -> awaiting payment (per design flow)
