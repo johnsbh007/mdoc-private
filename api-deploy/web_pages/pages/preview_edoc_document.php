@@ -166,10 +166,10 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
 .pv-photo { float:left; border:1px solid #333; width:3cm; height:4cm; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
 .pv-opening { clear:both; text-indent:1.27cm; }
-.pv-title { text-align:center; font-weight:bold; font-size:16px; margin:90px 0 20px; }
+.pv-title { text-align:center; font-weight:bold; font-size:16px; margin:120px 0 20px; }
 .pv-emblem { text-align:center; margin:0 0 6px; }
 .pv-emblem img { width:1.5cm; height:auto; }
-.pv-sign { margin:35% 0 0 65%; width:30%; text-align:center; white-space:nowrap; }
+.pv-sign { margin:400px 0 0 65%; width:30%; text-align:center; white-space:nowrap; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
