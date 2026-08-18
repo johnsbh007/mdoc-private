@@ -42,9 +42,23 @@ try {
             }
             break;
         case 'reject':
-            $newStatus='REJECTED';
-            $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
-            $msg='ປະຕິເສດຄຳຮ້ອງ';
+            if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
+                $ok=false; $msg='ບໍ່ສາມາດປະຕິເສດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
+            } else {
+                $newStatus='REJECTED';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
+                $msg='ປະຕິເສດຄຳຮ້ອງ';
+            }
+            break;
+        case 'revision':
+            // Request changes: doc returns to an editable state so it can be corrected & re-submitted.
+            if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
+                $ok=false; $msg='ບໍ່ສາມາດຂໍປັບປຸງໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
+            } else {
+                $newStatus='NEEDS_REVISION';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
+                $msg='ຂໍໃຫ້ປັບປຸງຂໍ້ມູນ (ສົ່ງຄືນໃຫ້ແກ້ໄຂ)';
+            }
             break;
         case 'pay':
             if ($doc['status'] !== 'ISSUED') { $ok=false; $msg='ສະຖານະບໍ່ຖືກຕ້ອງສຳລັບການຊຳລະ'; }

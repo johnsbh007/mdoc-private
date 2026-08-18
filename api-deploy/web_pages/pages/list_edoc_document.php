@@ -33,6 +33,7 @@ $status_labels = [
   'DRAFT'            => 'ຮ່າງ/draft',
   'SUBMITTED'        => 'ຮັບແລ້ວ/submitted',
   'PENDING_APPROVAL' => 'ລໍຖ້າອະນຸມັດ/Pending Approval',
+  'NEEDS_REVISION'   => 'ຕ້ອງການປັບປຸງ/Needs Revision',
   'ISSUED'           => 'ອະນຸມັດແລ້ວ/Issued',
   'PENDING_PAYMENT'  => 'ລໍຖ້າຊໍາລະ/Pending Payment',
   'PAID'             => 'ຊໍາລະແລ້ວ/Paid',
@@ -133,8 +134,8 @@ require '../components/layout.php';
             <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $status_labels[$row['status']] ?? $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
             <td class="text-center">
-              <?php if ($row['status'] === 'DRAFT'): ?>
-                <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> ແກ້ໄຂ</button>
+              <?php if (in_array($row['status'], ['DRAFT','NEEDS_REVISION'], true)): ?>
+                <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> <?= $row['status'] === 'NEEDS_REVISION' ? 'ປັບປຸງ' : 'ແກ້ໄຂ' ?></button>
               <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>

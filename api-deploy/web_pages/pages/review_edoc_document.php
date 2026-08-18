@@ -32,6 +32,7 @@ $status_labels = [
   'DRAFT'            => 'ຮ່າງ/draft',
   'SUBMITTED'        => 'ຮັບແລ້ວ/submitted',
   'PENDING_APPROVAL' => 'ລໍຖ້າອະນຸມັດ/Pending Approval',
+  'NEEDS_REVISION'   => 'ຕ້ອງການປັບປຸງ/Needs Revision',
   'ISSUED'           => 'ອະນຸມັດແລ້ວ/Issued',
   'PENDING_PAYMENT'  => 'ລໍຖ້າຊໍາລະ/Pending Payment',
   'PAID'             => 'ຊໍາລະແລ້ວ/Paid',
@@ -112,7 +113,7 @@ require '../components/layout.php';
 .rev-grid .val { font-size: .95rem; color: #222; font-weight: 500; margin: 0; }
 .st-badge { padding: 4px 12px; border-radius: 20px; font-size: .8rem; font-weight: 600; }
 .st-DRAFT { background:#eee; color:#555; } .st-SUBMITTED { background:#e3f2fd; color:#1565c0; }
-.st-PENDING_APPROVAL { background:#fff3e0; color:#e65100; } .st-ISSUED { background:#e8f5e9; color:#2e7d32; }
+.st-PENDING_APPROVAL { background:#fff3e0; color:#e65100; } .st-NEEDS_REVISION { background:#fff8e1; color:#b26a00; } .st-ISSUED { background:#e8f5e9; color:#2e7d32; }
 .st-PENDING_PAYMENT { background:#fff8e1; color:#f9a825; } .st-PAID { background:#c8e6c9; color:#1b5e20; }
 .st-SIGNED { background:#e0f2f1; color:#00695c; } .st-HANDOVER { background:#e1bee7; color:#6a1b9a; }
 .st-DOWNLOADED { background:#d1c4e9; color:#4527a0; } .st-REJECTED { background:#ffebee; color:#c62828; }
@@ -246,10 +247,16 @@ require '../components/layout.php';
           <button class="btn btn-success btn-act" onclick="doAction('issue')"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
         <?php endif; ?>
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
+          <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຂໍປັບປຸງ (Request Change)</button>
+        <?php endif; ?>
+        <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
         <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
           <a class="btn btn-outline-success btn-act" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-file-word"></i> ສ້າງໃບຢັ້ງຢືນ (Generate)</a>
+        <?php endif; ?>
+        <?php if ($status === 'NEEDS_REVISION'): ?>
+          <a class="btn btn-secondary btn-act" href="request_doc.php?doc_id=<?= $doc_id ?>&mode=draft"><i class="fas fa-edit"></i> ແກ້ໄຂເອກະສານ (Edit &amp; Re-submit)</a>
         <?php endif; ?>
         <a href="list_edoc_document.php?status=<?= $status ?>" class="btn btn-light border btn-act">ກັບຄືນ (Back)</a>
       </div>
