@@ -166,7 +166,7 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
 .pv-photo { float:left; border:1px solid #333; width:3cm; height:4cm; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
 .pv-opening { clear:both; text-indent:1.27cm; }
-.pv-title { text-align:center; font-weight:bold; font-size:16px; margin:22px 0 16px; }
+.pv-title { text-align:center; font-weight:bold; font-size:16px; margin:28px 0 16px; margin-left:66.6667%; width:33.3333%; }
 .pv-emblem { text-align:center; margin:0 0 6px; }
 .pv-emblem img { width:1.5cm; height:auto; }
 .pv-sign { margin-left:70%; width:30%; text-align:center; white-space:nowrap; }
