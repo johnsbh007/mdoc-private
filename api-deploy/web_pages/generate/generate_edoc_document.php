@@ -130,10 +130,10 @@ function fillDots($p, $label, $value) {
   if ($pos === false) return;
   $len = strlen($full);
   $ws = $pos + strlen($label);
-  while ($ws < $len && $full[$ws] === ' ') $ws++;   // label may end with a space before the dots
+  while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
   while ($e < $len && $full[$e] === '.') $e++;
-  if ($e > $ws) spliceAt($p, $ws, $e - $ws, $value);
+  if ($e > $ws) spliceAt($p, $ws, $e - $ws, ' ' . $value . ', ');
 }
 
 // ops per paragraph (matched by unique anchor substring, in document order)
@@ -165,6 +165,29 @@ foreach ($paras as $p) {
       else if ($op[0] === 'phrase') replacePhrase($p, $op[1], $op[2]);
     }
     break; // one anchor per paragraph
+  }
+}
+
+// ── cleanup: normalize the filled text artifacts from fillDots (' value, ') ──
+// Remove the separator comma that lands right before /ຄປຕ (doc-ref doc_no),
+// then collapse multiple spaces inside every w:t text node (matches the preview's pvClean).
+foreach ($paras as $p) {
+  $full = '';
+  foreach (wRuns($p) as $r) $full .= runText($r);
+  if (strpos($full, '/ຄປຕ') !== false) {
+    $c2 = strpos($full, ',');
+    $k2 = strpos($full, '/ຄປຕ');
+    if ($c2 !== false && $k2 !== false && $k2 - $c2 >= 1 && $k2 - $c2 <= 2) spliceAt($p, $c2, $k2 - $c2, '');
+  }
+}
+// collapse multiple spaces inside every w:t text node
+foreach ($paras as $p) {
+  foreach (wRuns($p) as $r) {
+    foreach ($r->childNodes as $c) {
+      if ($c->nodeType === XML_ELEMENT_NODE && $c->localName === 't') {
+        $c->textContent = preg_replace('/\s{2,}/', ' ', $c->textContent);
+      }
+    }
   }
 }
 
