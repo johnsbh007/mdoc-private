@@ -247,7 +247,7 @@ require '../components/layout.php';
           <button class="btn btn-success btn-act" onclick="doAction('issue')"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
         <?php endif; ?>
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
-          <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຂໍປັບປຸງ (Request Change)</button>
+          <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຕ້ອງປັບປຸງ (Request Change)</button>
         <?php endif; ?>
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
