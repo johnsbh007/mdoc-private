@@ -7,7 +7,7 @@ require_once '../connect.php';
 $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
-// ── load doc + citizen + residence (same source as the generate step) ─
+// ── load doc + citizen + residence ───────────────────────────────────
 $d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
                             i.name_lo AS item_name, t.name_lo AS type_name
                      FROM edoc_document d
@@ -19,13 +19,14 @@ $d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
 $d->execute([$doc_id]);
 $row = $d->fetch(PDO::FETCH_ASSOC);
 if (!$row) { die('Document not found'); }
+if ((int)$row['doc_type_id'] !== 1) { die('Preview available for Residence Certificate only'); }
 
 $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);
-$res = $rs->fetch(PDO::FETCH_ASSOC);
+$res = $rs->fetch(PDO::FETCH_ASSOC) ?: [];
 
-// ── resolve lookup codes → Lao names (save code, show name) ─────────
+// ── resolve codes → Lao names ────────────────────────────────────────
 function resolveName($conn, $table, $code) {
   if ($code === '' || $code === null) return '';
   $st = $conn->prepare("SELECT name_lo FROM $table WHERE code = ? LIMIT 1");
@@ -34,57 +35,75 @@ function resolveName($conn, $table, $code) {
   return $n !== false ? $n : $code;
 }
 function geoName($conn, $table, $id, $fallback) {
-  if ($id) {
-    $st = $conn->prepare("SELECT name_lo FROM $table WHERE id = ? LIMIT 1");
-    $st->execute([$id]);
-    $n = $st->fetchColumn();
-    if ($n !== false) return $n;
-  }
+  if ($id) { $st = $conn->prepare("SELECT name_lo FROM $table WHERE id = ? LIMIT 1"); $st->execute([$id]); $n=$st->fetchColumn(); if ($n!==false) return $n; }
   return $fallback ?: '';
 }
 function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
 
-$originName      = resolveName($conn, 'edoc_country',    $row['origin']);
-$nationalityName = resolveName($conn, 'edoc_country',    $row['nationality']);
-$ethnicityName   = resolveName($conn, 'edoc_ethnicity',  $row['ethnicity']);
-$religionName    = resolveName($conn, 'edoc_religion',   $row['religion']);
-$occupationName  = resolveName($conn, 'edoc_occupation', $row['occupation']);
-$birthVillageName  = geoName($conn, 'edoc_village',  $row['birth_village_id']  ?? null, $row['birth_village']);
-$birthDistrictName = geoName($conn, 'edoc_district', $row['birth_district_id'] ?? null, $row['birth_district']);
-$birthProvinceName = geoName($conn, 'edoc_province', $row['birth_province_id'] ?? null, $row['birth_province']);
-$provName  = geoName($conn, 'edoc_province', $row['province_id'],  null);
-$distName  = geoName($conn, 'edoc_district', $row['district_id'],  null);
-$tasName   = geoName($conn, 'edoc_taseng',   $row['taseng_id'],    null);
-$vilName   = geoName($conn, 'edoc_village',  $row['village_id'],   $row['village_name']);
+$originName=resolveName($conn,'edoc_country',$row['origin']); $nationalityName=resolveName($conn,'edoc_country',$row['nationality']);
+$ethnicityName=resolveName($conn,'edoc_ethnicity',$row['ethnicity']); $religionName=resolveName($conn,'edoc_religion',$row['religion']); $occupationName=resolveName($conn,'edoc_occupation',$row['occupation']);
+$birthVillageName=geoName($conn,'edoc_village',$row['birth_village_id']??null,$row['birth_village']); $birthDistrictName=geoName($conn,'edoc_district',$row['birth_district_id']??null,$row['birth_district']); $birthProvinceName=geoName($conn,'edoc_province',$row['birth_province_id']??null,$row['birth_province']);
+$title=($row['gender']==='M')?'ທ້າວ':(($row['gender']==='F')?'ນາງ':'');
+$today=date('d/m/Y');
 
-$title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ? 'ນາງ' : '');
-$fullName = trim($title . ' ' . $row['first_name'] . ' ' . $row['last_name']);
-$father = $res['father_name'] ?? '';
-$mother = $res['mother_name'] ?? '';
-$household = ($res['household_book_no'] ?? '');
-$address = implode(' › ', array_filter([$provName, $distName, $tasName, $vilName]));
-$address .= $row['house_no'] ? ' ເລກທີ່ ' . $row['house_no'] . ($row['unit_no'] ? '/' . $row['unit_no'] : '') : '';
-$birthPlace = implode(' › ', array_filter([$birthProvinceName, $birthDistrictName, $birthVillageName]));
+// ── fill the official template (same routine as the generator) ──────
+$template='/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx';
+if (!file_exists($template)) { die('Template not found'); }
+$xml = (function() use ($template){ $z=new ZipArchive(); $z->open($template); $s=$z->getFromName('word/document.xml'); $z->close(); return $s; })();
+$dom=new DOMDocument(); $dom->loadXML($xml);
+$ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-$status_labels = [
-  'SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລໍຖ້າອະນຸມັດ/Pending Approval',
-  'NEEDS_REVISION'=>'ຕ້ອງການປັບປຸງ/Needs Revision','ISSUED'=>'ອະນຸມັດແລ້ວ/Issued',
-  'PENDING_PAYMENT'=>'ລໍຖ້າຊໍາລະ/Pending Payment','PAID'=>'ຊໍາລະແລ້ວ/Paid',
-  'SIGNED'=>'ເຊັນແລ້ວ/Signed','HANDOVER'=>'ສົ່ງໃຫ້ແລ້ວ/Handover','DOWNLOADED'=>'ດາວໂຫລດແລ້ວ/Downloaded',
+function wRuns($p){ $o=[]; foreach($p->childNodes as $c) if($c->nodeType===XML_ELEMENT_NODE && $c->localName==='r')$o[]=$c; return $o; }
+function runText($r){ $s=''; foreach($r->childNodes as $c) if($c->localName==='t')$s.=$c->textContent; return $s; }
+function setRunText($r,$t){ $first=null; foreach($r->childNodes as $c){ if($c->localName==='t'){ if($first===null)$first=$c; else $c->textContent=''; } } if($first!==null)$first->textContent=$t; }
+function spliceAt($p,$absIdx,$OLen,$NEW){ $runs=wRuns($p); $pos=0;$start=null;$end=null;$ls=0;$le=0; foreach($runs as $i=>$r){ $t=runText($r);$rlen=strlen($t); if($start===null && $pos+$rlen>$absIdx){$start=$i;$ls=$absIdx-$pos;} if($pos+$rlen>=$absIdx+$OLen){$end=$i;$le=$absIdx+$OLen-$pos;break;} $pos+=$rlen; } if($start===null)return false; if($start===$end){ $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW.substr($t,$le)); } else { $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW); for($i=$start+1;$i<$end;$i++)setRunText($runs[$i],''); $te=runText($runs[$end]); setRunText($runs[$end],substr($te,$le)); } return true; }
+function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $idx=strpos($full,$OLD); if($idx===false)return false; return spliceAt($p,$idx,strlen($OLD),$NEW); }
+function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws)spliceAt($p,$ws,$e-$ws,$value); }
+
+$opsByAnchor=[
+ '/ຄປຕ'=>[['dots','ເລກທີ',$row['doc_no']]],
+ 'PREFIXວັນທີ'=>[['dots','ວັນທີ',$today]],
+ 'ທ້າວ ຫຼື ນາງ'=>[['phrase','ທ້າວ ຫຼື ນາງ',$title],['dots','ທ້າວ',$row['first_name']],['dots','ນາມສະກຸນ',$row['last_name']]],
+ 'ວັນ,ເດືອນ,ປີເກີດ'=>[['dots','ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob'])],['dots','ບ້ານເກີດ',$birthVillageName],['dots','ເມືອງ',$birthDistrictName]],
+ 'ເຊື້ອຊາດ'=>[['dots','ແຂວງ',$birthProvinceName],['dots','ເຊື້ອຊາດ',$originName],['dots','ສັນຊາດ',$nationalityName],['dots','ສາສະໜາ',$religionName],['dots','ຊົນເຜົ່າ',$ethnicityName],['dots','ອາຊີບ',$occupationName],['dots','ບັດປະຈໍາຕົວເລກທີ',$row['id_card']],['dots','ລົງວັນທີ',fmtDate($row['id_card_issue_date'])]],
+ 'ເຮືອນເລກທີ'=>[['dots','ເຮືອນເລກທີ',$row['house_no']],['dots','ໜ່ວຍທີ',$row['unit_no']],['dots','ບ້ານ',$row['village_name']]],
+ 'ສໍາມະໂນຄົວ'=>[['dots','ຂື້ນສໍາມະໂນຄົວເລກທີ',$res['household_book_no']??''],['dots','ລົງວັນທີ',fmtDate($res['household_book_date']??'')]],
+ 'ເບີໂທລະສັບ'=>[['dots','ເບີໂທລະສັບ',$row['phone']],['dots','ເປັນລູກຂອງທ້າວ',$res['father_name']??'']],
+ 'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ບ້ານ',$res['parents_address']??'']],
 ];
+$paras=$dom->getElementsByTagNameNS($ns,'p');
+$filled=[];
+foreach($paras as $p){
+  $full=''; foreach(wRuns($p) as $r)$full.=runText($r);
+  $trimmed=ltrim($full);
+  foreach($opsByAnchor as $anchor=>$ops){
+    if(strpos($anchor,'PREFIX')===0){ if(strpos($trimmed,substr($anchor,6))!==0)continue; }
+    else if(strpos($full,$anchor)===false)continue;
+    foreach($ops as $op){ if($op[0]==='dots')fillDots($p,$op[1],$op[2]); else if($op[0]==='phrase')replacePhrase($p,$op[1],$op[2]); }
+    break;
+  }
+}
+
+// collect filled paragraphs + alignment for HTML rendering
+$xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
+$htmlParas=[];
+foreach($paras as $p){
+  $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
+  $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
+  $htmlParas[]=['text'=>$text,'align'=>$align];
+}
+
 require '../components/layout.php';
+function pvAlign($align){ switch($align){case 'center':return 'center';case 'right':return 'right';default:return 'justify';} }
+$labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລໍຖ້າອະນຸມັດ/Pending Approval','NEEDS_REVISION'=>'ຕ້ອງການປັບປຸງ/Needs Revision','ISSUED'=>'ອະນຸມັດແລ້ວ/Issued','PENDING_PAYMENT'=>'ລໍຖ້າຊໍາລະ/Pending Payment','PAID'=>'ຊໍາລະແລ້ວ/Paid','SIGNED'=>'ເຊັນແລ້ວ/Signed','HANDOVER'=>'ສົ່ງໃຫ້ແລ້ວ/Handover','DOWNLOADED'=>'ດາວໂຫລດແລ້ວ/Downloaded'];
 ?>
 <style>
-.preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.08); max-width:820px; margin:0 auto 18px; padding:38px 48px; font-family:'Noto Sans Lao', 'Phetsarath OT', serif; }
-.preview-paper h3 { text-align:center; font-weight:700; margin:0 0 4px; }
-.preview-paper .sub { text-align:center; color:#555; margin-bottom:18px; }
-.preview-paper .doc-no { text-align:center; color:#044482; font-weight:600; margin-bottom:20px; }
-.pv-row { display:flex; margin-bottom:10px; line-height:1.7; }
-.pv-row .k { flex:0 0 240px; color:#444; }
-.pv-row .v { flex:1; font-weight:500; border-bottom:1px dotted #999; min-height:24px; }
-.pv-note { text-align:center; color:#999; font-size:.85rem; margin-top:22px; font-style:italic; }
-.pv-fill-line { border-bottom:1px dotted #999; display:inline-block; }
-.pv-status { text-align:center; color:#888; font-size:.85rem; margin-top:8px; }
+.preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:820px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
+.preview-paper p { margin:0 0 4px; }
+.pv-amp { vertical-align:middle; }
+.pv-vline { border:1px dashed #bbb; }
+.pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
+.pv-actions { max-width:820px; margin:0 auto 16px; }
 </style>
 <div class="content-wrapper p-3">
   <nav class="breadcrumb mb-2">
@@ -95,34 +114,22 @@ require '../components/layout.php';
     </ol>
   </nav>
 
-  <div class="text-center mb-3">
+  <div class="pv-actions text-center">
     <a class="btn btn-outline-secondary" href="review_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-arrow-left"></i> ກັບຄືນ (Back to review)</a>
     <button class="btn btn-outline-primary ms-2" onclick="window.print()"><i class="fas fa-print"></i> ພິມ (Print)</button>
+    <a class="btn btn-outline-success ms-2" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-file-word"></i> ດາວໂຫລດ Word (Download)</a>
   </div>
 
+  <div class="pv-note"><i class="fas fa-info-circle"></i> ຕົວຢ່າງສະແດງຕາມແບບຟອມທາງການ (Preview of the official form) — ເອກະສານຈະອອກຢ່າງເປັນທາງການຫຼັງອະນຸມັດ ແລະ ຊຳລະເງິນ. ສະຖານະ: <?= $labels[$row['status']] ?? $row['status'] ?></div>
+
   <div class="preview-paper">
-    <h3>ໃບຢັ້ງຢືນທີ່ຢູ່</h3>
-    <div class="sub">(Residence Certificate — Preview / ຕົວຢ່າງສະແດງ)</div>
-    <div class="doc-no">ສະບັບເລກທີ່: <?= htmlspecialchars($row['doc_no']) ?></div>
-    <div class="doc-no">ວັນທີ: <?= htmlspecialchars(fmtDate($row['submitted_at'] ?: $row['created_at'])) ?></div>
-    <hr>
-    <div class="pv-row"><div class="k">ຊື່ ແລະ ນາມສະກຸນ (Full name)</div><div class="v"><?= htmlspecialchars($fullName) ?></div></div>
-    <div class="pv-row"><div class="k">ເລກບັດປະຈຳຕົວ (NID)</div><div class="v"><?= htmlspecialchars($row['id_card']) ?></div></div>
-    <div class="pv-row"><div class="k">ວັນເດືອນປີເກີດ (DOB)</div><div class="v"><?= htmlspecialchars(fmtDate($row['dob'])) ?></div></div>
-    <div class="pv-row"><div class="k">ສັນຊາດ (Nationality)</div><div class="v"><?= htmlspecialchars($nationalityName) ?></div></div>
-    <div class="pv-row"><div class="k">ເຊື້ອຊາດ (Origin)</div><div class="v"><?= htmlspecialchars($originName) ?></div></div>
-    <div class="pv-row"><div class="k">ຊົນເຜົ່າ (Ethnicity)</div><div class="v"><?= htmlspecialchars($ethnicityName) ?></div></div>
-    <div class="pv-row"><div class="k">ສາສະໜາ (Religion)</div><div class="v"><?= htmlspecialchars($religionName) ?></div></div>
-    <div class="pv-row"><div class="k">ອາຊີບ (Occupation)</div><div class="v"><?= htmlspecialchars($occupationName) ?></div></div>
-    <div class="pv-row"><div class="k">ສະຖານທີ່ເກີດ (Birth place)</div><div class="v"><?= htmlspecialchars($birthPlace) ?></div></div>
-    <div class="pv-row"><div class="k">ທີ່ຢູ່ປັດຈຸບັນ (Current address)</div><div class="v"><?= htmlspecialchars($address) ?></div></div>
-    <?php if ($father): ?><div class="pv-row"><div class="k">ຊື່ພໍ່ (Father)</div><div class="v"><?= htmlspecialchars($father) ?></div></div><?php endif; ?>
-    <?php if ($mother): ?><div class="pv-row"><div class="k">ຊື່ແມ່ (Mother)</div><div class="v"><?= htmlspecialchars($mother) ?></div></div><?php endif; ?>
-    <?php if ($household): ?><div class="pv-row"><div class="k">ເລກປື້ມຄຸ້ມບ້ານ (Household book)</div><div class="v"><?= htmlspecialchars($household) ?></div></div><?php endif; ?>
-    <hr>
-    <div class="pv-row"><div class="k">ຜູ້ອອກໃບຢັ້ງຢືນ</div><div class="v"><span class="pv-fill-line">&nbsp;</span></div></div>
-    <div class="pv-note">* ຕົວຢ່າງສະແດງ (Preview) — ເອກະສານຢ່າງເປັນທາງການຈະຖືກອອກຫຼັງຈາກອະນຸມັດ ແລະ ຊຳລະເງິນ*</div>
-    <div class="pv-status">ສະຖານະ: <?= $status_labels[$row['status']] ?? $row['status'] ?></div>
+    <?php foreach ($htmlParas as $hp): ?>
+      <?php if (trim($hp['text']) === ''): ?>
+        <div style="height:16px">&nbsp;</div>
+      <?php else: ?>
+        <p style="text-align:<?= pvAlign($hp['align']) ?>"><?= nl2br(htmlspecialchars($hp['text'])) ?></p>
+      <?php endif; ?>
+    <?php endforeach; ?>
   </div>
 </div>
 <?php require '../components/layout_footer.php'; ?>
