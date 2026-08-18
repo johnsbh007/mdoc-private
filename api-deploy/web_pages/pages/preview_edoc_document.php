@@ -84,13 +84,28 @@ foreach($paras as $p){
   }
 }
 
-// collect filled paragraphs + alignment for HTML rendering
+// collect filled paragraphs + alignment + special layout classes
 $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
 $htmlParas=[];
+$photoRendered=false;  // dedupe the repeated ຕິດຮູບ 3x4 boxes
 foreach($paras as $p){
   $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
   $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
-  $htmlParas[]=['text'=>$text,'align'=>$align];
+  $t=trim($text);
+  $rt='normal';
+  // 1) doc-reference line: ຕາແສງ... (left) + ເລກທີ .../ຄປຕ (right)
+  if (strpos($t,'/ຄປຕ')!==false || strpos($t,'/ຄປຕ ສວລ')!==false) {
+    $rt='docref';
+  }
+  // 2) photo block: keep ONE boxed, left-aligned (dedupe repeats)
+  else if (strpos($t,'ຕິດຮູບ')!==false || strpos($t,'3x4')!==false) {
+    if ($photoRendered) { $rt='skip'; } else { $rt='photo'; $photoRendered=true; }
+  }
+  // 3) opening line: indent
+  else if (strpos($t,'ຄະນະກຳມະການປົກຄອງ')!==false && strpos($t,'ຂໍຢັ້ງຢືນ')!==false) {
+    $rt='opening';
+  }
+  $htmlParas[]=['text'=>$text,'align'=>$align,'rt'=>$rt];
 }
 
 require '../components/layout.php';
@@ -100,6 +115,11 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 <style>
 .preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:820px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
 .preview-paper p { margin:0 0 4px; }
+.pv-docref { display:flex; justify-content:space-between; align-items:baseline; }
+.pv-docref .pv-docref-left { text-align:left; }
+.pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
+.pv-photo { float:left; border:1px solid #333; padding:35px 30px; text-align:center; width:130px; margin:0 16px 12px 0; font-size:14px; line-height:1.4; }
+.pv-opening { text-indent:2.5em; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
@@ -124,10 +144,33 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 
   <div class="preview-paper">
     <?php foreach ($htmlParas as $hp): ?>
-      <?php if (trim($hp['text']) === ''): ?>
-        <div style="height:16px">&nbsp;</div>
+      <?php if ($hp['rt'] === 'skip'): ?>
+        <?php continue; ?>
+      <?php elseif ($hp['rt'] === 'photo'): ?>
+        <div class="pv-photo">
+          <div>ຕິດຮູບ</div>
+          <div>3x4</div>
+        </div>
+      <?php elseif ($hp['rt'] === 'docref'): ?>
+        <?php
+          $t = $hp['text'];
+          // split ຕາແສງ...  (left) from ເລກທີ .../ຄປຕ ສວລ  (right)
+          $pos = strpos($t, 'ເລກທີ');
+          $left = $pos !== false ? trim(substr($t, 0, $pos)) : $t;
+          $right = $pos !== false ? trim(substr($t, $pos)) : '';
+        ?>
+        <div class="pv-docref">
+          <span class="pv-docref-left"><?= htmlspecialchars($left) ?></span>
+          <?php if ($right !== ''): ?><span class="pv-docref-right"><?= htmlspecialchars($right) ?></span><?php endif; ?>
+        </div>
+      <?php elseif ($hp['rt'] === 'opening'): ?>
+        <p class="pv-opening" style="text-align:<?= pvAlign($hp['align']) ?>"><?= nl2br(htmlspecialchars($hp['text'])) ?></p>
       <?php else: ?>
-        <p style="text-align:<?= pvAlign($hp['align']) ?>"><?= nl2br(htmlspecialchars($hp['text'])) ?></p>
+        <?php if (trim($hp['text']) === ''): ?>
+          <div style="height:16px">&nbsp;</div>
+        <?php else: ?>
+          <p style="text-align:<?= pvAlign($hp['align']) ?>"><?= nl2br(htmlspecialchars($hp['text'])) ?></p>
+        <?php endif; ?>
       <?php endif; ?>
     <?php endforeach; ?>
   </div>
