@@ -8,13 +8,17 @@ $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load doc + citizen + residence ───────────────────────────────────
-$d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
+$d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name, f.name_lo AS taseng_name,
+                            g.name_lo AS district_name, h.name_lo AS province_name,
                             i.name_lo AS item_name, t.name_lo AS type_name, i.doc_type_id
                      FROM edoc_document d
                      JOIN edoc_citizen c ON d.citizen_id = c.id
                      JOIN edoc_doc_item i ON d.doc_item_id = i.id
                      JOIN edoc_doc_type t ON i.doc_type_id = t.id
                      LEFT JOIN edoc_village v ON c.village_id = v.id
+                     LEFT JOIN edoc_taseng f ON c.taseng_id = f.id
+                     LEFT JOIN edoc_district g ON c.district_id = g.id
+                     LEFT JOIN edoc_province h ON c.province_id = h.id
                      WHERE d.id = ?");
 $d->execute([$doc_id]);
 $row = $d->fetch(PDO::FETCH_ASSOC);
@@ -71,6 +75,12 @@ $opsByAnchor=[
  'ເບີໂທລະສັບ'=>[['dots','ເບີໂທລະສັບ',$row['phone']],['dots','ເປັນລູກຂອງທ້າວ',$res['father_name']??'']],
  'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ບ້ານ',$res['parents_address']??'']],
 ];
+// residence geo names from the citizen's CURRENT residence (not hardcoded)
+$resTaseng = $row['taseng_name'] ?: '';
+$resDistrict = $row['district_name'] ?: '';
+$resProvince = $row['province_name'] ?: '';
+$resVillage = $row['village_name'] ?: '';
+
 $paras=$dom->getElementsByTagNameNS($ns,'p');
 $filled=[];
 foreach($paras as $p){
@@ -83,6 +93,21 @@ foreach($paras as $p){
     break;
   }
 }
+
+// ── replace the template's hardcoded district/taseng/province with the real residence names ──
+// The official template has ເມືອງໄຊທານີ / ຕາແສງສີວິໄລ / ນະຄອນຫຼວງວຽງຈັນ baked in (and in the
+// opening + ຕາງໜ້າ lines). Swap them with the citizen's actual current residence.
+// NOTE: edoc_taseng.name_lo already carries the "ຕາແສງ " prefix and edoc_district.name_lo may carry
+// "ເມືອງ ", so strip those so the template's own ຕາແສງ/ເມືອງ words aren't duplicated.
+$resTasengRaw = $resTaseng;
+$resDistrictRaw = $resDistrict;
+$resTaseng    = preg_replace('/^\s*ຕາແສງ\s*/u', '', $resTaseng);
+$resDistrict  = preg_replace('/^\s*ເມືອງ\s*/u', '', $resDistrict);
+if ($resDistrict !== '') { replacePhraseAll($paras,'ໄຊທານີ',$resDistrict); }
+if ($resTaseng   !== '') { replacePhraseAll($paras,'ສີວິໄລ',$resTaseng); }
+if ($resProvince !== '') { replacePhraseAll($paras,'ນະຄອນຫຼວງວຽງຈັນ',$resProvince); }
+
+function replacePhraseAll($paras,$OLD,$NEW){ foreach($paras as $p){ replacePhrase($p,$OLD,$NEW); } }
 
 function pvClean($t){
   $t = preg_replace('/\s{2,}/', ' ', $t);   // collapse runs of whitespace to single space
@@ -99,18 +124,21 @@ foreach($paras as $p){
   $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
   $t=pvClean($text);
   $rt='normal';
-  // 1) doc-reference line: ຕາແສງ... (left) + ເລກທີ .../ຄປຕ (right)
-  if (strpos($t,'/ຄປຕ')!==false || strpos($t,'/ຄປຕ ສວລ')!==false) {
-    $rt='docref';
-  }
-  // 2) photo block: keep ONE boxed, left-aligned (dedupe repeats)
+  // 1) document title ໃບຢັ້ງຢືນທີ່ຢູ່ — bold + bigger
+  if ($t === 'ໃບຢັ້ງຢືນທີ່ຢູ່') { $rt='title'; }
+  // 2) doc-reference line: ຕາແສງ... (left) + ເລກທີ .../ຄປຕ (right)
+  else if (strpos($t,'/ຄປຕ')!==false || strpos($t,'/ຄປຕ ສວລ')!==false) { $rt='docref'; }
+  // 3) photo block: keep ONE boxed, left-aligned (dedupe repeats)
   else if (strpos($t,'ຕິດຮູບ')!==false || strpos($t,'3x4')!==false) {
     if ($photoRendered) { $rt='skip'; } else { $rt='photo'; $photoRendered=true; }
   }
-  // 3) opening line: indent
-  else if (strpos($t,'ຄະນະກຳມະການປົກຄອງ')!==false && strpos($t,'ຂໍຢັ້ງຢືນ')!==false) {
-    $rt='opening';
-  }
+  // 4) opening line + name line: indent same
+  else if (strpos($t,'ຄະນະກຳມະການປົກຄອງ')!==false && strpos($t,'ຂໍຢັ້ງຢືນ')!==false) { $rt='opening'; }
+  else if (strpos($t,'ທ້າວ ')!==false && strpos($t,'ນາມສະກຸນ ')!==false) { $rt='opening'; }
+  // 5) the two closing-content lines: ຊື່ງຜູ້ກ່ຽວ / ດັ່ງນັ້ນ — indent
+  else if (strpos($t,'ຊື່ງຜູ້ກ່ຽວ')!==false || strpos($t,'ດັ່ງນັ້ນ, ຈຶ່ງ')!==false) { $rt='opening'; }
+  // 6) signature block: ຕາງໜ້າ... / ປະທານ — 2/3 right, centered in that zone
+  else if (strpos($t,'ຕາງໜ້າ ຄະນະ')!==false || $t === 'ປະທານ') { $rt='sign'; }
   $htmlParas[]=['text'=>$t,'align'=>$align,'rt'=>$rt];
 }
 
@@ -124,8 +152,10 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-docref { display:flex; justify-content:space-between; align-items:baseline; }
 .pv-docref .pv-docref-left { text-align:left; }
 .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
-.pv-photo { float:left; border:1px solid #333; padding:26px 22px; text-align:center; width:98px; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
-.pv-opening { clear:both; text-indent:1.27cm; margin-top:14px; }
+.pv-photo { float:left; border:1px solid #333; width:3cm; height:4cm; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
+.pv-opening { clear:both; text-indent:1.27cm; }
+.pv-title { text-align:center; font-weight:bold; font-size:16px; margin:10px 0 16px; }
+.pv-sign { margin-left:55%; text-align:center; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
@@ -157,6 +187,10 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
           <div>ຕິດຮູບ</div>
           <div>3x4</div>
         </div>
+      <?php elseif ($hp['rt'] === 'title'): ?>
+        <p class="pv-title"><?= htmlspecialchars($hp['text']) ?></p>
+      <?php elseif ($hp['rt'] === 'sign'): ?>
+        <p class="pv-sign"><?= nl2br(htmlspecialchars($hp['text'])) ?></p>
       <?php elseif ($hp['rt'] === 'docref'): ?>
         <?php
           $t = $hp['text'];
