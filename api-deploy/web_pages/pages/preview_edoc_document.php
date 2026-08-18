@@ -58,7 +58,7 @@ function runText($r){ $s=''; foreach($r->childNodes as $c) if($c->localName==='t
 function setRunText($r,$t){ $first=null; foreach($r->childNodes as $c){ if($c->localName==='t'){ if($first===null)$first=$c; else $c->textContent=''; } } if($first!==null)$first->textContent=$t; }
 function spliceAt($p,$absIdx,$OLen,$NEW){ $runs=wRuns($p); $pos=0;$start=null;$end=null;$ls=0;$le=0; foreach($runs as $i=>$r){ $t=runText($r);$rlen=strlen($t); if($start===null && $pos+$rlen>$absIdx){$start=$i;$ls=$absIdx-$pos;} if($pos+$rlen>=$absIdx+$OLen){$end=$i;$le=$absIdx+$OLen-$pos;break;} $pos+=$rlen; } if($start===null)return false; if($start===$end){ $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW.substr($t,$le)); } else { $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW); for($i=$start+1;$i<$end;$i++)setRunText($runs[$i],''); $te=runText($runs[$end]); setRunText($runs[$end],substr($te,$le)); } return true; }
 function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $idx=strpos($full,$OLD); if($idx===false)return false; return spliceAt($p,$idx,strlen($OLD),$NEW); }
-function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws)spliceAt($p,$ws,$e-$ws,$value); }
+function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws)spliceAt($p,$ws,$e-$ws,' '.$value.', '); }
 
 $opsByAnchor=[
  '/ຄປຕ'=>[['dots','ເລກທີ',$row['doc_no']]],
@@ -84,14 +84,20 @@ foreach($paras as $p){
   }
 }
 
-// collect filled paragraphs + alignment + special layout classes
+function pvClean($t){
+  $t = preg_replace('/\s{2,}/', ' ', $t);   // collapse runs of whitespace to single space
+  $t = preg_replace('/,\s*,/', ',', $t);    // collapse multiple commas
+  $t = preg_replace('/,\s+$/', '', $t);     // trim trailing comma + spaces
+  $t = preg_replace('/^\s+/', '', $t);      // trim leading
+  return $t;
+}
 $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
 $htmlParas=[];
 $photoRendered=false;  // dedupe the repeated ຕິດຮູບ 3x4 boxes
 foreach($paras as $p){
   $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
   $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
-  $t=trim($text);
+  $t=pvClean($text);
   $rt='normal';
   // 1) doc-reference line: ຕາແສງ... (left) + ເລກທີ .../ຄປຕ (right)
   if (strpos($t,'/ຄປຕ')!==false || strpos($t,'/ຄປຕ ສວລ')!==false) {
@@ -105,7 +111,7 @@ foreach($paras as $p){
   else if (strpos($t,'ຄະນະກຳມະການປົກຄອງ')!==false && strpos($t,'ຂໍຢັ້ງຢືນ')!==false) {
     $rt='opening';
   }
-  $htmlParas[]=['text'=>$text,'align'=>$align,'rt'=>$rt];
+  $htmlParas[]=['text'=>$t,'align'=>$align,'rt'=>$rt];
 }
 
 require '../components/layout.php';
@@ -118,8 +124,8 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-docref { display:flex; justify-content:space-between; align-items:baseline; }
 .pv-docref .pv-docref-left { text-align:left; }
 .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
-.pv-photo { float:left; border:1px solid #333; padding:35px 30px; text-align:center; width:130px; margin:0 16px 12px 0; font-size:14px; line-height:1.4; }
-.pv-opening { text-indent:2.5em; }
+.pv-photo { float:left; border:1px solid #333; padding:26px 22px; text-align:center; width:98px; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
+.pv-opening { clear:both; text-indent:1.27cm; margin-top:14px; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
@@ -158,6 +164,8 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
           $pos = strpos($t, 'ເລກທີ');
           $left = $pos !== false ? trim(substr($t, 0, $pos)) : $t;
           $right = $pos !== false ? trim(substr($t, $pos)) : '';
+          $right = preg_replace('/,\s*$/', '', $right); // drop trailing comma from doc-ref
+          $right = preg_replace('/\s*,?\s*(\/ຄປຕ)/', '\1', $right); // drop comma between doc-no and /ຄປຕ
         ?>
         <div class="pv-docref">
           <span class="pv-docref-left"><?= htmlspecialchars($left) ?></span>
