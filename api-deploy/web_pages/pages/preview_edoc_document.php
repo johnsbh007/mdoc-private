@@ -117,15 +117,27 @@ function pvClean($t){
   return $t;
 }
 $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
+// extract the Lao National Emblem image (image1.png) once for the preview header
+$emblemB64 = '';
+{
+  $tmpE = tempnam(sys_get_temp_dir(),'emblem').'.png';
+  $ze = new ZipArchive(); if ($ze->open($template) === true) { $img = $ze->getFromName('word/media/image1.png'); $ze->close(); if ($img !== false) { $emblemB64 = base64_encode($img); } }
+  @unlink($tmpE);
+}
 $htmlParas=[];
 $photoRendered=false;  // dedupe the repeated ຕິດຮູບ 3x4 boxes
+$imgFound=false;       // only render the emblem once (first image-bearing para)
 foreach($paras as $p){
   $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
   $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
+  $hasEmblem = (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
+  if ($hasEmblem) $imgFound = true;
   $t=pvClean($text);
   $rt='normal';
+  // 0) national emblem (first image-bearing, empty-text para) — centered image
+  if ($hasEmblem) { $rt='emblem'; }
   // 1) document title ໃບຢັ້ງຢືນທີ່ຢູ່ — bold + bigger
-  if ($t === 'ໃບຢັ້ງຢືນທີ່ຢູ່') { $rt='title'; }
+  else if ($t === 'ໃບຢັ້ງຢືນທີ່ຢູ່') { $rt='title'; }
   // 2) doc-reference line: ຕາແສງ... (left) + ເລກທີ .../ຄປຕ (right)
   else if (strpos($t,'/ຄປຕ')!==false || strpos($t,'/ຄປຕ ສວລ')!==false) { $rt='docref'; }
   // 3) photo block: keep ONE boxed, left-aligned (dedupe repeats)
@@ -155,7 +167,9 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-photo { float:left; border:1px solid #333; width:3cm; height:4cm; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 16px 12px 0; font-size:13px; line-height:1.3; }
 .pv-opening { clear:both; text-indent:1.27cm; }
 .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:10px 0 16px; }
-.pv-sign { margin-left:55%; text-align:center; }
+.pv-emblem { text-align:center; margin:0 0 6px; }
+.pv-emblem img { width:3cm; height:auto; }
+.pv-sign { margin-left:66.6667%; width:33.3333%; text-align:center; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
@@ -182,6 +196,10 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
     <?php foreach ($htmlParas as $hp): ?>
       <?php if ($hp['rt'] === 'skip'): ?>
         <?php continue; ?>
+      <?php elseif ($hp['rt'] === 'emblem'): ?>
+        <?php if ($emblemB64 !== ''): ?>
+          <div class="pv-emblem"><img src="data:image/png;base64,<?= $emblemB64 ?>" alt="ກາແຫ່ງຊາດ"></div>
+        <?php endif; ?>
       <?php elseif ($hp['rt'] === 'photo'): ?>
         <div class="pv-photo">
           <div>ຕິດຮູບ</div>
