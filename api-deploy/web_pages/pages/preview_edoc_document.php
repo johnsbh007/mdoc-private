@@ -9,7 +9,7 @@ if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load doc + citizen + residence ───────────────────────────────────
 $d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
-                            i.name_lo AS item_name, t.name_lo AS type_name
+                            i.name_lo AS item_name, t.name_lo AS type_name, i.doc_type_id
                      FROM edoc_document d
                      JOIN edoc_citizen c ON d.citizen_id = c.id
                      JOIN edoc_doc_item i ON d.doc_item_id = i.id
