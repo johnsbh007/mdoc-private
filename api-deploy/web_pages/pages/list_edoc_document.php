@@ -139,7 +139,7 @@ require '../components/layout.php';
               <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
-              <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED'])): ?>
+              <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
                 <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>
               <?php endif; ?>
             </td>

@@ -252,8 +252,8 @@ require '../components/layout.php';
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
-        <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
-          <a class="btn btn-outline-success btn-act" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-file-word"></i> ສ້າງໃບຢັ້ງຢືນ (Generate)</a>
+        <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
+          <a class="btn btn-outline-secondary btn-act" target="_blank" href="preview_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-eye"></i> ສະແດງ (Preview)</a>
         <?php endif; ?>
         <?php if ($status === 'NEEDS_REVISION'): ?>
           <a class="btn btn-secondary btn-act" href="request_doc.php?doc_id=<?= $doc_id ?>&mode=draft"><i class="fas fa-edit"></i> ແກ້ໄຂເອກະສານ (Edit &amp; Re-submit)</a>
