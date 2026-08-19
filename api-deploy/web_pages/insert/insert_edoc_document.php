@@ -155,8 +155,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $vals[$f['field_name']] = trim((string)($_POST['field_' . $f['id']] ?? ''));
             }
             $hbDate = !empty($vals['household_book_date']) ? $vals['household_book_date'] : null;
+            $pUnit      = trim($_POST['parents_unit_no'] ?? '');
+            $pProvince  = !empty($_POST['parents_province_id']) ? (int)$_POST['parents_province_id'] : null;
+            $pDistrict  = !empty($_POST['parents_district_id']) ? (int)$_POST['parents_district_id'] : null;
+            $pTaseng    = !empty($_POST['parents_taseng_id'])   ? (int)$_POST['parents_taseng_id']   : null;
+            $pVillage   = !empty($_POST['parents_village_id'])  ? (int)$_POST['parents_village_id']  : null;
             $conn->prepare("DELETE FROM edoc_dc_residence WHERE doc_id=?")->execute([$doc_id]);
-            $conn->prepare("INSERT INTO edoc_dc_residence (doc_id, household_book_no, household_book_date, father_name, mother_name, parents_address, related_authority, purpose) VALUES (?,?,?,?,?,?,?,?)")
+            $conn->prepare("INSERT INTO edoc_dc_residence (doc_id, household_book_no, household_book_date, father_name, mother_name, parents_address, related_authority, purpose, parents_unit_no, parents_province_id, parents_district_id, parents_taseng_id, parents_village_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
                  ->execute([
                     $doc_id,
                     $vals['household_book_no'] ?: null,
@@ -166,6 +171,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $vals['parents_address'] ?: null,
                     $vals['related_authority'] ?: null,
                     $vals['purpose'] ?: null,
+                    $pUnit ?: null,
+                    $pProvince,
+                    $pDistrict,
+                    $pTaseng,
+                    $pVillage,
                  ]);
         }
 
