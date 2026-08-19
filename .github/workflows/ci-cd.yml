@@ -1,0 +1,76 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  php-lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql
+          ini-values: |
+            display_errors=On
+            error_reporting=E_ALL
+
+      - name: Install Composer dependencies (if composer.json exists)
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-interaction --prefer-dist --no-progress
+          fi
+
+      - name: Lint PHP files
+        run: find . -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Run PHPUnit tests (if tests exist)
+        run: |
+          if [ -f phpunit.xml ] || [ -f phpunit.xml.dist ]; then
+            vendor/bin/phpunit --colors=always
+          else
+            echo "No PHPUnit config – skipping tests"
+          fi
+
+  deploy:
+    needs: php-lint-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy via rsync
+        env:
+          DEPLOY_PATH: /var/www/html/edoc
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          rsync -avz --delete \
+            --exclude='.git*' \
+            --exclude='node_modules' \
+            --exclude='vendor' \
+            ./ $SSH_USER@$SSH_HOST:$DEPLOY_PATH
+
+      - name: Clear OPcache
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          ssh $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
+
+      - name: Health check
+        run: |
+          curl -fsS https://edoc.apis.com.la/ || exit 1
