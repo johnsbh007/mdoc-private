@@ -54,11 +54,12 @@ Seeded: 18 provinces, 148 districts, 1,408 tasengs, 8,828 villages
 - API deploys to `/var/www/html/mdoc/api`; copy `config.php.example` → `config.php`
   and set a 64-char random JWT secret.
 
-## CI
+## CI / CD
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`/`develop`:
+GitHub Actions (`.github/workflows/ci-cd.yml`) runs on every push/PR to `main`:
 - **PHP Syntax Lint** — `php -l` on every `.php` file (catches syntax errors before deploy).
-- **PWA Build Check** — `npm ci` + `npm run build` for `mdoc-pwa/` (non-blocking).
+- **Deploy** — on push to `main`, rsyncs the repo to `/var/www/html/edoc` on apis.com.la,
+  clears OPcache, and runs a health check. Deploy uses the `SSH_PRIVATE_KEY` repo secret.
 
 ## Security
 
