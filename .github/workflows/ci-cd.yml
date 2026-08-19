@@ -42,13 +42,13 @@ jobs:
   deploy:
     needs: php-lint-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.5.4
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -62,8 +62,9 @@ jobs:
           DEPLOY_PATH: /var/www/html/edoc
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_OPTS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
-          rsync -avz \
+          rsync -avz $SSH_OPTS \
             --exclude='opcache_clear_tmp.php' \
             --exclude='.git*' \
             ./api-deploy/web_pages/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
@@ -72,8 +73,9 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_OPTS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
-          ssh $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
 
       - name: Health check
         run: |
