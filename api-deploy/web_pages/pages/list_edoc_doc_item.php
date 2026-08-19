@@ -108,7 +108,7 @@ require '../components/layout.php';
           <?php foreach ($items as $i => $row): ?>
           <tr>
             <td class="text-center"><?= $i + 1 ?></td>
-            <td class="text-center"><?= htmlspecialchars($row['type_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['doc_type_code']) ?>]</small></td>
+            <td class="text-center"><?= htmlspecialchars($row['type_name']) ?></td>
             <td class="text-center"><span class="code-badge"><?= htmlspecialchars($row['doc_item_code']) ?></span></td>
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
