@@ -52,17 +52,21 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy via rsync
+      # IMPORTANT: The live app at /var/www/html/edoc contains files that are
+      # NOT tracked in this repo (index.php, connect.php, components/, css/, js/,
+      # libs/, check_login.php, ...). We therefore sync ONLY the deployable
+      # subtree (api-deploy/web_pages/) and NEVER use --delete, so unversioned
+      # server files are preserved.
+      - name: Deploy web_pages subtree via rsync (no delete)
         env:
           DEPLOY_PATH: /var/www/html/edoc
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          rsync -avz --delete \
+          rsync -avz \
+            --exclude='opcache_clear_tmp.php' \
             --exclude='.git*' \
-            --exclude='node_modules' \
-            --exclude='vendor' \
-            ./ $SSH_USER@$SSH_HOST:$DEPLOY_PATH
+            ./api-deploy/web_pages/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
 
       - name: Clear OPcache
         env:
