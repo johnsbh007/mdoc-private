@@ -98,7 +98,7 @@ require '../components/layout.php';
             <th width="12%" class="text-center">ລະຫັດ</th>
             <th>ຊື່ (ພາສາລາວ)</th>
             <th>ຊື່ (ພາສາອັງກິດ)</th>
-            <th width="9%" class="text-center">ລາຄາ</th>
+            <th width="9%" class="text-center">ຄ່າທຳນຽມ</th>
             <th width="8%" class="text-center">ສະຖານະ</th>
             <th width="5%" class="text-center">ແກ້ໄຂ</th>
             <th width="5%" class="text-center">ລຶບ</th>
@@ -108,7 +108,7 @@ require '../components/layout.php';
           <?php foreach ($items as $i => $row): ?>
           <tr>
             <td class="text-center"><?= $i + 1 ?></td>
-            <td class="text-center"><?= htmlspecialchars($row['doc_type_code']) ?></td>
+            <td class="text-center"><?= htmlspecialchars($row['type_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['doc_type_code']) ?>]</small></td>
             <td class="text-center"><span class="code-badge"><?= htmlspecialchars($row['doc_item_code']) ?></span></td>
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
