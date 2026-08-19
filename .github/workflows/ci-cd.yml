@@ -62,9 +62,8 @@ jobs:
           DEPLOY_PATH: /var/www/html/edoc
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_OPTS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
-          rsync -avz $SSH_OPTS \
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             --exclude='opcache_clear_tmp.php' \
             --exclude='.git*' \
             ./api-deploy/web_pages/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
@@ -73,9 +72,8 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_OPTS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
-          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
 
       - name: Health check
         run: |
