@@ -102,6 +102,12 @@ $inv = $conn->prepare("SELECT inv_no, amount, currency, status FROM edoc_invoice
 $inv->execute([$doc_id]);
 $inv = $inv->fetch(PDO::FETCH_ASSOC);
 
+// ── payment evidence (slip) ───────────────────────────────────────────
+$evidence = [];
+$ev = $conn->prepare("SELECT * FROM edoc_payment_evidence WHERE doc_id = ? ORDER BY id DESC");
+$ev->execute([$doc_id]);
+$evidence = $ev->fetchAll(PDO::FETCH_ASSOC);
+
 require '../components/layout.php';
 ?>
 <style>
@@ -228,6 +234,76 @@ require '../components/layout.php';
     </div>
   </div>
 
+  <!-- PAYMENT EVIDENCE (SLIP) -->
+  <?php if (in_array($status, ['ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
+  <div class="rev-card">
+    <div class="rev-head"><i class="fas fa-file-invoice-dollar"></i> ຫຼັກຖານການຊຳລະ (Payment Evidence / Slip)</div>
+    <div class="rev-body">
+      <?php if ($evidence): ?>
+        <?php foreach ($evidence as $i => $ev): ?>
+        <div class="d-flex align-items-start gap-3 mb-3 p-2 border rounded" style="background:#fafbfc;">
+          <div class="flex-shrink-0">
+            <?php $isImg = in_array($ev['mime'], ['image/jpeg','image/png','image/webp','image/gif'], true); ?>
+            <?php if ($isImg): ?>
+              <a href="../<?= htmlspecialchars($ev['file_path']) ?>" target="_blank"><img src="../<?= htmlspecialchars($ev['file_path']) ?>" style="width:150px;height:auto;border:1px solid #ddd;border-radius:6px;" alt="slip"></a>
+            <?php else: ?>
+              <a class="btn btn-outline-secondary" href="../<?= htmlspecialchars($ev['file_path']) ?>" target="_blank"><i class="fas fa-file-pdf"></i> ເບິ່ງໃບສຳລັບ (PDF)</a>
+            <?php endif; ?>
+          </div>
+          <div class="flex-grow-1">
+            <div><strong><?= htmlspecialchars($ev['orig_name']) ?></strong> <span class="text-muted">(<?= number_format($ev['size']/1024, 1) ?> KB)</span></div>
+            <?php if ($ev['amount'] !== null): ?><div class="text-muted">ຈຳນວນເງິນ (Amount): <?= number_format((float)$ev['amount'], 0) ?> ກີບ</div><?php endif; ?>
+            <?php if (!empty($ev['pay_ref'])): ?><div class="text-muted">ເລກອ້າງອີງ (Ref): <?= htmlspecialchars($ev['pay_ref']) ?></div><?php endif; ?>
+            <?php if (!empty($ev['note'])): ?><div class="text-muted">ໝາຍເຫດ (Note): <?= htmlspecialchars($ev['note']) ?></div><?php endif; ?>
+            <div class="mt-1">
+              <?php if ($ev['verified']): ?>
+                <span class="badge bg-success"><i class="fas fa-check-circle"></i> ກວດສອບແລ້ວ (Verified)</span>
+              <?php else: ?>
+                <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> ລໍຖ້າກວດສອບ (Pending Verify)</span>
+              <?php endif; ?>
+              <span class="text-muted small ms-2"><?= date('d/m/Y H:i', strtotime($ev['created_at'])) ?></span>
+            </div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <p class="text-muted mb-0">ຍັງບໍ່ມີຫຼັກຖານການຊຳລະ (No payment slip uploaded yet).</p>
+      <?php endif; ?>
+
+      <?php if ($status === 'ISSUED'): ?>
+      <!-- Upload slip form (approved doc, awaiting payment) -->
+      <hr>
+      <form id="frmSlip" enctype="multipart/form-data">
+        <input type="hidden" name="doc_id" value="<?= $doc_id ?>">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label small mb-1">ເອກະສານຫຼັກຖານ (Slip image/PDF) <span class="text-danger">*</span></label>
+            <input type="file" name="slip" id="slipFile" class="form-control form-control-sm" accept="image/*,application/pdf" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">ຈຳນວນເງິນທີ່ຈ່າຍ (ກີບ)</label>
+            <input type="number" step="0.01" name="amount" id="slipAmount" class="form-control form-control-sm" placeholder="<?= htmlspecialchars(number_format((float)($doc['amount'] ?: $doc['price']), 0)) ?>">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">ເລກອ້າງອີງ (Bank ref)</label>
+            <input type="text" name="pay_ref" id="slipRef" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-primary btn-sm w-100" onclick="uploadSlip()"><i class="fas fa-upload"></i> ອັບໂຫລດ (Upload)</button>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-8">
+            <label class="form-label small mb-1">ໝາຍເຫດ (Note)</label>
+            <input type="text" name="note" id="slipNote" class="form-control form-control-sm">
+          </div>
+        </div>
+      </form>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- ACTIONS -->
   <div class="rev-card">
     <div class="rev-head"><i class="fas fa-tasks"></i> ດຳເນີນການ (Actions)</div>
@@ -241,15 +317,16 @@ require '../components/layout.php';
           <button class="btn btn-primary btn-act" onclick="doAction('approve')"><i class="fas fa-check-circle"></i> ຢືນຢັນຂໍ້ມູນ → ອະນຸມັດ</button>
         <?php elseif ($status === 'PENDING_APPROVAL'): ?>
           <button class="btn btn-primary btn-act" onclick="doAction('approve')"><i class="fas fa-check-circle"></i> ອະນຸມັດ (Approve)</button>
-        <?php elseif ($status === 'ISSUED'): ?>
-          <button class="btn btn-success btn-act" onclick="doAction('pay')"><i class="fas fa-money-bill-wave"></i> ບັນທຶກການຊຳລະ (Pay)</button>
+        <?php elseif ($status === 'PENDING_PAYMENT'): ?>
+          <button class="btn btn-success btn-act" onclick="doAction('pay')"><i class="fas fa-check-double"></i> ຢືນຢັນການຊຳລະ (Confirm Paid)</button>
+          <button class="btn btn-danger btn-act" onclick="doAction('reject_payment')"><i class="fas fa-times-circle"></i> ປະຕິເສດສະລິບ (Reject Slip)</button>
         <?php elseif ($status === 'PAID'): ?>
           <button class="btn btn-success btn-act" onclick="doAction('issue')"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
         <?php endif; ?>
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຕ້ອງປັບປຸງ (Request Change)</button>
         <?php endif; ?>
-        <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
+        <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
         <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
@@ -267,6 +344,29 @@ require '../components/layout.php';
 <?php require '../components/layout_footer.php'; ?>
 
 <script>
+function uploadSlip() {
+  const file = document.getElementById('slipFile').files[0];
+  if (!file) { Swal.fire('ແຈ້ງເຕືອນ!', 'ກະລຸນາເລືອກເອກະສານຫຼັກຖານ (slip)', 'warning'); return; }
+  const fd = new FormData(document.getElementById('frmSlip'));
+  Swal.fire({ title: 'ກຳລັງອັບໂຫລດ...', text: 'ກະລຸນາລໍຖ້າ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  $.ajax({
+    url: '../ajax/action/upload_payment_evidence.php',
+    type: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    dataType: 'json',
+    success: function(r) {
+      if (r.status === 'success') {
+        Swal.fire({ title: 'ສຳເລັດ!', text: r.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
+      } else {
+        Swal.fire('ຜິດພາດ', r.message || 'ອັບໂຫລດບໍ່ສຳເລັດ', 'error');
+      }
+    },
+    error: function() { Swal.fire('ຜິດພາດ', 'ເຊື່ອມຕໍ່ບໍ່ໄດ້!', 'error'); }
+  });
+}
+
 function doAction(action) {
   const remark = document.getElementById('actRemark').value.trim();
   Swal.fire({

@@ -41,6 +41,15 @@ try {
                 $ok = false; $msg = 'ບໍ່ສາມາດອະນຸມັດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
             }
             break;
+        case 'reject_payment':
+            // Reject the uploaded slip: return doc to ISSUED so a valid slip can be re-uploaded.
+            if ($doc['status'] !== 'PENDING_PAYMENT') { $ok=false; $msg='ສະຖານະບໍ່ຖືກຕ້ອງສຳລັບການປະຕິເສດສະລິບ'; }
+            else {
+                $newStatus='ISSUED';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
+                $msg='ປະຕິເສດສະລິບການຊຳລະ (ກັບໄປລໍຖ້າການຊຳລະ — ກະລຸນາອັບໂຫລດໃບສຳລັບໃໝ່)';
+            }
+            break;
         case 'reject':
             if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
                 $ok=false; $msg='ບໍ່ສາມາດປະຕິເສດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
@@ -61,13 +70,17 @@ try {
             }
             break;
         case 'pay':
-            if ($doc['status'] !== 'ISSUED') { $ok=false; $msg='ສະຖານະບໍ່ຖືກຕ້ອງສຳລັບການຊຳລະ'; }
+            if ($doc['status'] !== 'PENDING_PAYMENT') { $ok=false; $msg='ສະຖານະບໍ່ຖືກຕ້ອງສຳລັບການຢືນຢັນການຊຳລະ (ຕ້ອງ PENDING_PAYMENT)'; }
             else {
-                $method = $_POST['method'] ?? 'CASH';
+                $method = trim($_POST['method'] ?? '');
+                if ($method === '') $method = 'BANK'; // slip => typically bank transfer / QR
                 $pay_no = 'PAY-' . date('Ymd') . '-' . str_pad($id, 5, '0', STR_PAD_LEFT);
                 $conn->prepare("INSERT INTO edoc_payment (invoice_id, pay_no, method, amount, paid_at, status) SELECT id, ?, ?, ?, NOW(), 'PAID' FROM edoc_invoice WHERE doc_id=?")
                       ->execute([$pay_no, $method, $doc['amount'], $id]);
-                $conn->prepare("UPDATE edoc_invoice SET status='PAID' WHERE doc_id=?")->execute([$id]);
+                $conn->prepare("UPDATE edoc_invoice SET status='PAID' WHERE doc_id=?" )->execute([$id]);
+                // mark the latest evidence as verified
+                $conn->prepare("UPDATE edoc_payment_evidence SET verified=1, verified_by=?, verified_at=NOW() WHERE doc_id=? AND verified=0")
+                      ->execute([$changed_by, $id]);
                 // receipt — fetch the payment id we just created (parameterized)
                 $pidStmt = $conn->prepare("SELECT p.id FROM edoc_payment p JOIN edoc_invoice i ON p.invoice_id=i.id WHERE i.doc_id=? ORDER BY p.id DESC LIMIT 1");
                 $pidStmt->execute([$id]);
@@ -76,8 +89,8 @@ try {
                 $conn->prepare("INSERT INTO edoc_receipt (payment_id, receipt_no, receipt_date, issued_by) VALUES (?,?,CURDATE(),?)")
                       ->execute([$pid, $receipt_no, $changed_by]);
                 $newStatus='PAID';
-                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
-                $msg='ຊຳລະເງິນສຳເລັດ (ໃບເກັບກ້ຽວ '.$receipt_no.')';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?" )->execute([$newStatus, $id]);
+                $msg='ຢືນຢັນການຊຳລະສຳເລັດ (ໃບເກັບກ້ຽວ '.$receipt_no.')';
             }
             break;
         case 'issue':
