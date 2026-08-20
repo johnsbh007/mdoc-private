@@ -386,7 +386,15 @@ function loadDocFields() {
     // EDIT_FORM, so re-edited change requests keep Unit/province/.../village.
     if (EDIT_DATA && (EDIT_DATA.parents_province_id || EDIT_DATA.parents_unit_no)) {
       if (document.getElementById('parents_unit_no')) document.getElementById('parents_unit_no').value = EDIT_DATA.parents_unit_no || '';
-      presetGeo('parent_', EDIT_DATA);
+      // Residence columns are parents_* (with "s") but the form field ids are
+      // parent_* (without "s"); map them so presetGeo finds the stored values.
+      const pd = {
+        parent_province_id: EDIT_DATA.parents_province_id,
+        parent_district_id: EDIT_DATA.parents_district_id,
+        parent_taseng_id:   EDIT_DATA.parents_taseng_id,
+        parent_village_id:  EDIT_DATA.parents_village_id,
+      };
+      presetGeo('parent_', pd);
     }
   });
 }
