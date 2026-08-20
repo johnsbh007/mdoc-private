@@ -380,11 +380,13 @@ function loadDocFields() {
         const el = document.querySelector('#docFields [name="' + name + '"]');
         if (el) el.value = val;
       });
-      // prefill parent address if available in EDIT_DATA or EDIT_FORM
-      if (EDIT_DATA && EDIT_DATA.parents_province_id) {
-          presetGeo('parent_', EDIT_DATA);
-          if (document.getElementById('parents_unit_no')) document.getElementById('parents_unit_no').value = EDIT_DATA.parents_unit_no || '';
-      }
+    }
+    // Pre-fill structured parents geo directly from EDIT_DATA (residence table
+    // merged into $editData). Runs whenever residence geo exists, regardless of
+    // EDIT_FORM, so re-edited change requests keep Unit/province/.../village.
+    if (EDIT_DATA && (EDIT_DATA.parents_province_id || EDIT_DATA.parents_unit_no)) {
+      if (document.getElementById('parents_unit_no')) document.getElementById('parents_unit_no').value = EDIT_DATA.parents_unit_no || '';
+      presetGeo('parent_', EDIT_DATA);
     }
   });
 }
@@ -398,6 +400,7 @@ function saveRequest(mode) {
     manual_id_card: document.getElementById('nid').value,
     manual_first_name: document.getElementById('first_name').value,
     manual_last_name: document.getElementById('last_name').value,
+    title: document.getElementById('title') ? document.getElementById('title').value : '',
     manual_gender: document.getElementById('gender').value,
     manual_dob: document.getElementById('dob').value,
     manual_phone: document.getElementById('phone').value,
@@ -457,6 +460,7 @@ $(function(){
   if (EDIT_DATA) {
     if (EDIT_DATA.id_card) document.getElementById('nid').value = EDIT_DATA.id_card;
     fillPerson(EDIT_DATA);
+    if (document.getElementById('title')) document.getElementById('title').value = EDIT_DATA.title || '';
     document.getElementById('nidMsg').textContent = 'ແກ້ໄຂຮ່າງ: ' + (EDIT_DATA.first_name || '') + ' ' + (EDIT_DATA.last_name || '');
   }
   loadDocFields();

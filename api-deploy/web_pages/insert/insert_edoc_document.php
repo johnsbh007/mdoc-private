@@ -79,16 +79,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($doc_id === 0 && empty($citizen_id)) {
             $full_name = trim($manualFirst . ' ' . $manualLast);
             $password_hash = password_hash(substr($manualPhone, -6) ?: 'changeme', PASSWORD_DEFAULT);
-            $stmtCit = $conn->prepare("INSERT INTO edoc_citizen (phone, email, password_hash, full_name, first_name, last_name, id_card, village_id, province_id, district_id, taseng_id, address_line, dob, gender, nationality, origin, ethnicity, religion, occupation, birth_village, birth_district, birth_province, birth_village_id, birth_district_id, birth_taseng_id, birth_province_id, id_card_issue_date, house_no, unit_no, is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)");
-            $stmtCit->execute([$manualPhone, $manualEmail ?: null, $password_hash, $full_name, $manualFirst, $manualLast, $manualIdCard ?: null, $village_id, $provinceId, $districtId, $tasengId, $manualAddress ?: null, $manualDob, $manualGender ?: null, $manualNationality ?: null, $manualOrigin ?: null, $manualEthnicity ?: null, $manualReligion ?: null, $manualOccupation ?: null, $manualBirthVillage ?: null, $manualBirthDistrict ?: null, $manualBirthProvince ?: null, $birthVillageId, $birthDistrictId, $birthTasengId, $birthProvinceId, $manualIdIssueDate, $manualHouseNo ?: null, $manualUnitNo ?: null]);
+            $stmtCit = $conn->prepare("INSERT INTO edoc_citizen (phone, email, password_hash, full_name, title, first_name, last_name, id_card, village_id, province_id, district_id, taseng_id, address_line, dob, gender, nationality, origin, ethnicity, religion, occupation, birth_village, birth_district, birth_province, birth_village_id, birth_district_id, birth_taseng_id, birth_province_id, id_card_issue_date, house_no, unit_no, is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)");
+            $stmtCit->execute([$manualPhone, $manualEmail ?: null, $password_hash, $full_name, $manualTitle ?: null, $manualFirst, $manualLast, $manualIdCard ?: null, $village_id, $provinceId, $districtId, $tasengId, $manualAddress ?: null, $manualDob, $manualGender ?: null, $manualNationality ?: null, $manualOrigin ?: null, $manualEthnicity ?: null, $manualReligion ?: null, $manualOccupation ?: null, $manualBirthVillage ?: null, $manualBirthDistrict ?: null, $manualBirthProvince ?: null, $birthVillageId, $birthDistrictId, $birthTasengId, $birthProvinceId, $manualIdIssueDate, $manualHouseNo ?: null, $manualUnitNo ?: null]);
             $citizen_id = (int)$conn->lastInsertId();
         } elseif ($citizen_id > 0 && ($manualFirst !== '' || $manualLast !== '' || $manualPhone !== '')) {
             $full_name = trim(($manualFirst ?: '') . ' ' . ($manualLast ?: ''));
-            $stmtCit = $conn->prepare("UPDATE edoc_citizen SET first_name=?, last_name=?, full_name=?, gender=?, dob=?, id_card=?, phone=?, email=?, village_id=?, province_id=?, district_id=?, taseng_id=?, address_line=?, nationality=?, origin=?, ethnicity=?, religion=?, occupation=?, birth_village=?, birth_district=?, birth_province=?, birth_village_id=?, birth_district_id=?, birth_taseng_id=?, birth_province_id=?, id_card_issue_date=?, house_no=?, unit_no=? WHERE id=?");
+            $stmtCit = $conn->prepare("UPDATE edoc_citizen SET first_name=?, last_name=?, full_name=?, title=?, gender=?, dob=?, id_card=?, phone=?, email=?, village_id=?, province_id=?, district_id=?, taseng_id=?, address_line=?, nationality=?, origin=?, ethnicity=?, religion=?, occupation=?, birth_village=?, birth_district=?, birth_province=?, birth_village_id=?, birth_district_id=?, birth_taseng_id=?, birth_province_id=?, id_card_issue_date=?, house_no=?, unit_no=? WHERE id=?");
             $stmtCit->execute([
                 $manualFirst ?: null,
                 $manualLast ?: null,
                 $full_name ?: null,
+                $manualTitle ?: null,
                 $manualGender ?: null,
                 $manualDob ?: null,
                 $manualIdCard ?: null,

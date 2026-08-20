@@ -9,7 +9,7 @@ $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load document + citizen + item/type + village ─────────────────────
-$st = $conn->prepare("SELECT d.*, c.first_name, c.last_name, c.gender, c.dob, c.phone, c.email,
+$st = $conn->prepare("SELECT d.*, c.first_name, c.last_name, c.title, c.gender, c.dob, c.phone, c.email,
                              c.id_card, c.nationality, c.origin, c.ethnicity, c.religion, c.occupation,
                              c.house_no, c.unit_no, c.address_line, c.id_card_issue_date,
                              c.province_id, c.district_id, c.taseng_id, c.village_id,
@@ -180,7 +180,7 @@ require '../components/layout.php';
     <div class="rev-head"><i class="fas fa-user"></i> ຂໍ້ມູນພົນລະເມືອງ (Citizen)</div>
     <div class="rev-body">
       <div class="rev-grid">
-        <div><p class="lbl">ຊື່ ແລະ ນາມສະກຸນ</p><p class="val"><?= htmlspecialchars($doc['first_name'] . ' ' . $doc['last_name']) ?></p></div>
+        <div><p class="lbl">ຊື່ ແລະ ນາມສະກຸນ</p><p class="val"><?= htmlspecialchars(($doc['title'] ? $doc['title'] . ' ' : '') . $doc['first_name'] . ' ' . $doc['last_name']) ?></p></div>
         <div><p class="lbl">ເພດ</p><p class="val"><?= $doc['gender'] === 'M' ? 'ຊາຍ' : ($doc['gender'] === 'F' ? 'ຍິງ' : '-') ?></p></div>
         <div><p class="lbl">ເລກບັດປະຈຳຕົວ (NID)</p><p class="val"><?= htmlspecialchars($doc['id_card']) ?></p></div>
         <div><p class="lbl">ວັນເກີດ</p><p class="val"><?= fmtDate($doc['dob']) ?></p></div>
