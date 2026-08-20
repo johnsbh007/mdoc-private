@@ -120,12 +120,12 @@ require '../components/layout.php';
             <th width="12%" class="text-center">ຈຳນວນ (ກີບ)</th>
             <th width="14%" class="text-center">ສະຖານະ</th>
             <th width="9%" class="text-center">ວັນທີ</th>
-            <th width="8%" class="text-center">ຈັດການ</th>
+            <th width="11%" class="text-center">ຈັດການ</th>
           </tr>
         </thead>
         <tbody>
           <?php foreach ($docs as $i => $row): ?>
-          <tr>
+          <tr id="doc-row-<?= $row['id'] ?>">
             <td class="text-center"><?= $i + 1 ?></td>
             <td class="text-center"><span class="prov-code-badge"><?= htmlspecialchars($row['doc_no']) ?></span></td>
             <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?><br><small class="text-muted"><?= htmlspecialchars($row['village_name'] ?? '-') ?></small></td>
@@ -133,7 +133,7 @@ require '../components/layout.php';
             <td class="text-center"><?= number_format($row['amount'], 2) ?></td>
             <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $status_labels[$row['status']] ?? $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
-            <td class="text-center">
+            <td class="text-center action-cell">
               <?php if (in_array($row['status'], ['DRAFT','NEEDS_REVISION'], true)): ?>
                 <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> <?= $row['status'] === 'NEEDS_REVISION' ? 'ປັບປຸງ' : 'ແກ້ໄຂ' ?></button>
               <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
@@ -142,6 +142,8 @@ require '../components/layout.php';
               <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
                 <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>
               <?php endif; ?>
+              <?php // TODO(roles): gate this delete button with a user-capability check (not everyone may delete) ?>
+              <button type="button" class="btn btn-danger btn-sm ms-1" onclick="confirmDeleteDoc(<?= (int)$row['id'] ?>, <?= json_encode($row['doc_no']) ?>)"><i class="fas fa-trash"></i></button>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -278,4 +280,39 @@ function openDraftEntry(id) {
 }
 
 function submitDraftFromModal() { $('#doc_mode').val('draft'); $('#formDoc').submit(); }
+
+function confirmDeleteDoc(id, docNo) {
+  Swal.fire({
+    title: 'ຢືນຢັນການລຶບ?',
+    html: 'ທ່ານຕ້ອງການລຶບຄຳຮ້ອງ <strong>' + (docNo || ('#' + id)) + '</strong> ບໍ່?<br>ການກະທຳນີ້ບໍ່ສາມາດຍົກເລີກໄດ້.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'ລຶບ',
+    cancelButtonText: 'ຍົກເລີກ'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    $.post('../ajax/del/delete_edoc_document.php', {id: id}, function(res) {
+      var r = parseJson(res);
+      if (r && r.status === 'success') {
+        Swal.fire('ລຶບສຳເລັດ', r.message || 'ລຶບຄຳຮ້ອງສຳເລັດ', 'success');
+        var row = document.getElementById('doc-row-' + id);
+        if (row && window.$ && $.fn.DataTable) {
+          var dt = $('#docTable').DataTable();
+          dt.row(row).remove().draw(false);
+        } else if (row) {
+          row.parentNode.removeChild(row);
+        }
+        var cnt = document.querySelector('.prov-count strong');
+        if (cnt) { var n = parseInt(cnt.textContent, 10); if (!isNaN(n) && n > 0) cnt.textContent = n - 1; }
+      } else {
+        Swal.fire('ຜິດພາດ', (r && r.message) ? r.message : 'ເກີດຂໍ້ຜິດພາດ', 'error');
+      }
+    }).fail(function() {
+      Swal.fire('ຜິດພາດ', 'ບໍ່ສາມາດເຊື່ອມຕໍ່ໄດ້', 'error');
+    });
+  });
+}
+
 </script>
