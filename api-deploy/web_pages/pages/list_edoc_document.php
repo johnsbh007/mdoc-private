@@ -143,7 +143,7 @@ require '../components/layout.php';
                 <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>
               <?php endif; ?>
               <?php // TODO(roles): gate this delete button with a user-capability check (not everyone may delete) ?>
-              <button type="button" class="btn btn-danger btn-sm ms-1" onclick="confirmDeleteDoc(<?= (int)$row['id'] ?>, <?= json_encode($row['doc_no']) ?>)"><i class="fas fa-trash"></i></button>
+              <button type="button" class="btn btn-danger btn-sm ms-1" onclick="confirmDeleteDoc(<?= (int)$row['id'] ?>, <?= htmlspecialchars(json_encode($row['doc_no']), ENT_QUOTES, 'UTF-8') ?>)"><i class="fas fa-trash"></i></button>
             </td>
           </tr>
           <?php endforeach; ?>
