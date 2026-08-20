@@ -206,17 +206,18 @@ require '../components/layout.php';
       <?php else: ?>
       <p class="text-muted mb-0">ຍັງບໍ່ມີຂໍ້ມູນເອກະສານ.</p>
       <?php endif; ?>
-      <?php if ($res): ?>
+      <?php if ($res && (($res['parents_unit_no'] ?? '') !== '' || $pProvName || $pDistName || $pTasName || $pVilName)): ?>
       <hr>
-      <!-- Only the structured parents-address geo fields are shown here; the
-           basic residence fields (household book no/date, father, mother,
-           related authority, purpose) are already rendered by the $fields
-           loop above from edoc_form_data — showing them again would duplicate. -->
+      <!-- Only the NEW structured parents-address geo fields are shown here.
+           Basic residence fields (household book no/date, father, mother,
+           parents address text, related authority, purpose) are ALREADY
+           rendered by the $fields loop above from edoc_form_data (fields 7-13).
+           This block appears only when structured parents data exists, so it
+           never duplicates what the $fields loop already shows. -->
       <div class="rev-grid">
         <div><p class="lbl">ໜ່ວຍ (Parents Unit)</p><p class="val"><?= htmlspecialchars($res['parents_unit_no'] ?? '') ?></p></div>
         <div><p class="lbl">ທີ່ຢູ່ພໍ່ແມ່ (Parents Address)</p>
-          <p class="val"><?= htmlspecialchars(implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]))) ?>
-          <?php if (!empty($res['parents_address'])): ?><br><small class="text-muted"><?= htmlspecialchars($res['parents_address']) ?></small><?php endif; ?></p></div>
+          <p class="val"><?= htmlspecialchars(implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]))) ?></p></div>
       </div>
       <?php endif; ?>
     </div>
