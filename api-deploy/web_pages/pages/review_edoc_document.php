@@ -76,13 +76,19 @@ $bTasName   = geoName($conn, 'edoc_taseng',   $doc['birth_taseng_id']);
 $bVilName   = geoName($conn, 'edoc_village',  $doc['birth_village_id']);
 
 // ── saved document fields (edoc_form_data joined with edoc_doc_field) ─
+// Field 11 (parents address) is set to the placeholder "STRUCTURED" for new
+// submissions (the real value lives in the structured edoc_dc_residence geo
+// fields). Filter that placeholder out so it isn't shown as literal text.
 $fields = [];
 $fd = $conn->prepare("SELECT f.field_label, f.field_type, fd.field_value
                       FROM edoc_form_data fd
                       JOIN edoc_doc_field f ON fd.field_id = f.id
                       WHERE fd.doc_id = ? ORDER BY f.id");
 $fd->execute([$doc_id]);
-$fields = $fd->fetchAll(PDO::FETCH_ASSOC);
+foreach ($fd->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    if ($row['field_value'] === 'STRUCTURED') continue;
+    $fields[] = $row;
+}
 
 // ── residence cert detail (doc_type 1) ────────────────────────────────
 $res = null;
