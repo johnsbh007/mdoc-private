@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$doc) { echo json_encode(['status' => 'error', 'message' => 'Not found']); exit; }
 
         // form data
-        $fd = $conn->prepare("SELECT f.id AS field_id, f.field_label, fd.field_value FROM edoc_form_data fd JOIN edoc_doc_field f ON fd.field_id=f.id WHERE fd.doc_id=?");
+        $fd = $conn->prepare("SELECT f.id AS field_id, f.field_label, fd.field_value FROM edoc_form_data fd JOIN edoc_doc_field f ON fd.field_id=f.id WHERE fd.doc_id=? AND f.is_active=1");
         $fd->execute([$id]);
         $form = $fd->fetchAll(PDO::FETCH_ASSOC);
 

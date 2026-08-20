@@ -87,7 +87,7 @@ $isResidence = ($doc['doc_type_id'] == 1);
 $fd = $conn->prepare("SELECT f.id AS field_id, f.field_label, f.field_type, fd.field_value
                       FROM edoc_form_data fd
                       JOIN edoc_doc_field f ON fd.field_id = f.id
-                      WHERE fd.doc_id = ? ORDER BY f.id");
+                      WHERE fd.doc_id = ? AND f.is_active = 1 ORDER BY f.id");
 $fd->execute([$doc_id]);
 foreach ($fd->fetchAll(PDO::FETCH_ASSOC) as $row) {
     if ($row['field_value'] === 'STRUCTURED') continue;          // drop placeholder
