@@ -75,6 +75,28 @@ function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=r
 function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws){ $ins=(trim(substr($full,$e))==='')?' '.$value:' '.$value.', '; spliceAt($p,$ws,$e-$ws,$ins); } }
 
 // Title for the name line: keep the original "ທ້າວ ຫຼື ນາງ" wording if gender unknown.
+// Name line: title+first_name, then a comma, then the ນາມສະກຸນ label + surname. No dots.
+function fillNameLine($p, $titleFirst, $surname) {
+  // 1. replace the placeholder phrase with title+first_name
+  replacePhrase($p, 'ທ້າວ ຫຼື ນາງ', $titleFirst);
+  // 2. collapse the dots (and any spaces) between the name and the ນາມສະກຸນ label into ', '
+  $full = ''; foreach (wRuns($p) as $r) $full .= runText($r);
+  $pos = strpos($full, 'ນາມສະກຸນ');
+  if ($pos === false) return;
+  $e = $pos;
+  while ($e > 0 && ($full[$e - 1] === '.' || $full[$e - 1] === ' ')) $e--;
+  spliceAt($p, $e, $pos - $e, ', ');
+  // 3. collapse the dots after ນາມສະກຸນ into a single space before the surname
+  $full = ''; foreach (wRuns($p) as $r) $full .= runText($r);
+  $p2 = strpos($full, 'ນາມສະກຸນ');
+  $ls = $p2 + strlen('ນາມສະກຸນ');
+  $len = strlen($full); $ws = $ls;
+  while ($ws < $len && $full[$ws] === ' ') $ws++;
+  $ee = $ws; while ($ee < $len && $full[$ee] === '.') $ee++;
+  $ins = ($surname === '') ? ' ' : ' ' . $surname;
+  if ($ee > $ws) spliceAt($p, $ws, $ee - $ws, $ins);
+  else spliceAt($p, $ws, 0, $ins);
+}
 $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 $opsByAnchor=[
  '/ຄປຕ'=>[['dots','ເລກທີ',$row['doc_no']]],
@@ -82,7 +104,7 @@ $opsByAnchor=[
  // Name line: put title+first_name in ONE phrase replacement. (Old code replaced the
  // phrase with the title first, then looked for label ທ້າວ to fill the first name —
  // which no longer existed for females, so ນາງ rows lost the first name.)
- 'ທ້າວ ຫຼື ນາງ'=>[['phrase','ທ້າວ ຫຼື ນາງ',trim($nameTitle.' '.$row['first_name'])],['dots','ນາມສະກຸນ',$row['last_name']]],
+ 'ທ້າວ ຫຼື ນາງ'=>[['name',trim($nameTitle.' '.$row['first_name']),$row['last_name']]],
  'ວັນ,ເດືອນ,ປີເກີດ'=>[['dots','ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob'])],['dots','ບ້ານເກີດ',$birthVillageName],['dots','ຕາແສງ',$birthTasengName],['dots','ເມືອງ',$birthDistrictName]],
  'ເຊື້ອຊາດ'=>[['dots','ແຂວງ',$birthProvinceName],['dots','ເຊື້ອຊາດ',$originName],['dots','ສັນຊາດ',$nationalityName],['dots','ສາສະໜາ',$religionName],['dots','ຊົນເຜົ່າ',$ethnicityName],['dots','ອາຊີບ',$occupationName],['dots','ບັດປະຈໍາຕົວເລກທີ',$row['id_card']],['dots','ລົງວັນທີ',fmtDate($row['id_card_issue_date'])]],
  'ເຮືອນເລກທີ'=>[['dots','ເຮືອນເລກທີ',$row['house_no']],['dots','ໜ່ວຍທີ',$row['unit_no']],['dots','ຕາແສງ',$resTaseng],['dots','ບ້ານ',$resVillage],['dots','ເມືອງ',$resDistrict],['dots','ແຂວງ',$resProvince]],
@@ -104,7 +126,7 @@ foreach($paras as $p){
   foreach($opsByAnchor as $anchor=>$ops){
     if(strpos($anchor,'PREFIX')===0){ if(strpos($trimmed,substr($anchor,6))!==0)continue; }
     else if(strpos($full,$anchor)===false)continue;
-    foreach($ops as $op){ if($op[0]==='dots')fillDots($p,$op[1],$op[2]); else if($op[0]==='phrase')replacePhrase($p,$op[1],$op[2]); }
+    foreach($ops as $op){ if($op[0]==='dots')fillDots($p,$op[1],$op[2]); else if($op[0]==='phrase')replacePhrase($p,$op[1],$op[2]); else if($op[0]==='name')fillNameLine($p,$op[1],$op[2]); }
     break;
   }
 }

@@ -155,6 +155,26 @@ function fillDots($p, $label, $value) {
   }
 }
 
+// Name line: title+first_name, then a comma, then the ນາມສະກຸນ label + surname. No dots.
+function fillNameLine($p, $titleFirst, $surname) {
+  replacePhrase($p, 'ທ້າວ ຫຼື ນາງ', $titleFirst);
+  $full = ''; foreach (wRuns($p) as $r) $full .= runText($r);
+  $pos = strpos($full, 'ນາມສະກຸນ');
+  if ($pos === false) return;
+  $e = $pos;
+  while ($e > 0 && ($full[$e - 1] === '.' || $full[$e - 1] === ' ')) $e--;
+  spliceAt($p, $e, $pos - $e, ', ');
+  $full = ''; foreach (wRuns($p) as $r) $full .= runText($r);
+  $p2 = strpos($full, 'ນາມສະກຸນ');
+  $ls = $p2 + strlen('ນາມສະກຸນ');
+  $len = strlen($full); $ws = $ls;
+  while ($ws < $len && $full[$ws] === ' ') $ws++;
+  $ee = $ws; while ($ee < $len && $full[$ee] === '.') $ee++;
+  $ins = ($surname === '') ? ' ' : ' ' . $surname;
+  if ($ee > $ws) spliceAt($p, $ws, $ee - $ws, $ins);
+  else spliceAt($p, $ws, 0, $ins);
+}
+
 // Title for the name line: keep the original "ທ້າວ ຫຼື ນາງ" wording if gender unknown.
 $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 // ops per paragraph (matched by unique anchor substring, in document order)
@@ -162,7 +182,7 @@ $opsByAnchor = [
   '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
   'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
   // Name line: put title+first_name in ONE phrase replacement.
-  'ທ້າວ ຫຼື ນາງ' => [['phrase', 'ທ້າວ ຫຼື ນາງ', trim($nameTitle . ' ' . $row['first_name'])], ['dots', 'ນາມສະກຸນ', $row['last_name']]],
+  'ທ້າວ ຫຼື ນາງ' => [['name', trim($nameTitle . ' ' . $row['first_name']), $row['last_name']]],
   'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ຕາແສງ', $birthTasengName], ['dots', 'ເມືອງ', $birthDistrictName]],
   'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
   'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $res['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $res['district_name'] ?? ''], ['dots', 'ແຂວງ', $res['province_name'] ?? '']],
@@ -185,6 +205,7 @@ foreach ($paras as $p) {
     foreach ($ops as $op) {
       if ($op[0] === 'dots')   fillDots($p, $op[1], $op[2]);
       else if ($op[0] === 'phrase') replacePhrase($p, $op[1], $op[2]);
+      else if ($op[0] === 'name') fillNameLine($p, $op[1], $op[2]);
     }
     break; // one anchor per paragraph
   }
