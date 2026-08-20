@@ -98,6 +98,15 @@ function fillNameLine($p, $titleFirst, $surname) {
   else spliceAt($p, $ws, 0, $ins);
 }
 $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
+// residence geo names from the citizen's CURRENT residence (not hardcoded).
+// MUST be defined before $opsByAnchor below, or the array captures null and the
+// requester's current-address ຕາແສງ/ບ້ານ/ເມືອງ/ແຂວງ render blank.
+$resTaseng = $row['taseng_name'] ?: '';
+$resDistrict = $row['district_name'] ?: '';
+$resProvince = $row['province_name'] ?: '';
+// edoc_village.name_lo may still carry the "ບ້ານ " prefix (only 42 villages in district 129 were
+// cleaned in the DB); strip it so the template's own ບ້ານ label isn't duplicated.
+$resVillage = preg_replace('/^\s*ບ້ານ\s*/u', '', ($row['village_name'] ?? ''));
 $opsByAnchor=[
  '/ຄປຕ'=>[['dots','ເລກທີ',$row['doc_no']]],
  'PREFIXວັນທີ'=>[['dots','ວັນທີ',$today]],
@@ -112,11 +121,6 @@ $opsByAnchor=[
  'ເບີໂທລະສັບ'=>[['dots','ເບີໂທລະສັບ',$row['phone']],['dots','ເປັນລູກຂອງທ້າວ',$res['father_name']??'']],
  'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ໜ່ວຍ',$parentUnit],['dots','ຕາແສງ',$parentTaseng],['dots','ບ້ານ',$parentVillage],['dots','ເມືອງ',$parentDistrict],['dots','ແຂວງ',$parentProvince]],
 ];
-// residence geo names from the citizen's CURRENT residence (not hardcoded)
-$resTaseng = $row['taseng_name'] ?: '';
-$resDistrict = $row['district_name'] ?: '';
-$resProvince = $row['province_name'] ?: '';
-$resVillage = $row['village_name'] ?: '';
 
 $paras=$dom->getElementsByTagNameNS($ns,'p');
 $filled=[];
