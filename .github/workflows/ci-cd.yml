@@ -68,12 +68,16 @@ jobs:
             --exclude='.git*' \
             ./api-deploy/web_pages/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
 
-      - name: Clear OPcache
+      - name: Clear OPcache (restart php-fpm)
+        # NOTE: the live app runs under php8.3-fpm. A CLI `php -r opcache_reset()`
+        # only clears the CLI OPcache and has NO effect on the fpm cache that
+        # actually serves pages — so stale bytecode persists after deploy. The
+        # reliable fix is to restart php8.3-fpm (passwordless sudo on server).
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST "php -r 'if (function_exists(\"opcache_reset\")) opcache_reset();'"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST "sudo systemctl restart php8.3-fpm"
 
       - name: Health check
         run: |
