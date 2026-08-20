@@ -214,7 +214,7 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:55px 0 20px !important; }
 .pv-emblem { text-align:center; margin:0 0 6px; }
 .pv-emblem img { width:1.5cm; height:auto; }
-.pv-sign { margin:20px 5% 0 65% !important; width:30%; text-align:center; white-space:nowrap; }
+.pv-sign { margin:20px 0 0 60% !important; text-align:center; }
 .pv-sign + .pv-sign { margin-top:110px !important; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
