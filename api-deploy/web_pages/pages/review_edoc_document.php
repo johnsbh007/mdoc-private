@@ -98,7 +98,6 @@ foreach ($fd->fetchAll(PDO::FETCH_ASSOC) as $row) {
 // ── residence cert detail (doc_type 1) ────────────────────────────────
 $res = null;
 $pProvName = $pDistName = $pTasName = $pVilName = '';
-$pAddrText = '';
 if ($isResidence) {
     $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
     $rs->execute([$doc_id]);
