@@ -46,7 +46,17 @@ function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
 
 $originName=resolveName($conn,'edoc_country',$row['origin']); $nationalityName=resolveName($conn,'edoc_country',$row['nationality']);
 $ethnicityName=resolveName($conn,'edoc_ethnicity',$row['ethnicity']); $religionName=resolveName($conn,'edoc_religion',$row['religion']); $occupationName=resolveName($conn,'edoc_occupation',$row['occupation']);
-$birthVillageName=geoName($conn,'edoc_village',$row['birth_village_id']??null,$row['birth_village']); $birthDistrictName=geoName($conn,'edoc_district',$row['birth_district_id']??null,$row['birth_district']); $birthProvinceName=geoName($conn,'edoc_province',$row['birth_province_id']??null,$row['birth_province']);
+$birthVillageName = geoName($conn,'edoc_village',$row['birth_village_id']??null,$row['birth_village']);
+$birthTasengName  = geoName($conn,'edoc_taseng',$row['birth_taseng_id']??null,'');
+$birthDistrictName = geoName($conn,'edoc_district',$row['birth_district_id']??null,$row['birth_district']);
+$birthProvinceName = geoName($conn,'edoc_province',$row['birth_province_id']??null,$row['birth_province']);
+// parent address: structured geo from new fields
+function geoNameId($conn,$table,$id){ if($id){$st=$conn->prepare("SELECT name_lo FROM $table WHERE id=?");$st->execute([$id]);$n=$st->fetchColumn();if($n!==false)return $n;} return ''; }
+$parentUnit      = $res['parents_unit_no'] ?? '';
+$parentVillage   = geoNameId($conn,'edoc_village',$res['parents_village_id'] ?? null);
+$parentTaseng    = geoNameId($conn,'edoc_taseng',$res['parents_taseng_id'] ?? null);
+$parentDistrict  = geoNameId($conn,'edoc_district',$res['parents_district_id'] ?? null);
+$parentProvince  = geoNameId($conn,'edoc_province',$res['parents_province_id'] ?? null);
 $title=($row['gender']==='M')?'ທ້າວ':(($row['gender']==='F')?'ນາງ':'');
 $today=date('d/m/Y');
 
@@ -62,18 +72,23 @@ function runText($r){ $s=''; foreach($r->childNodes as $c) if($c->localName==='t
 function setRunText($r,$t){ $first=null; foreach($r->childNodes as $c){ if($c->localName==='t'){ if($first===null)$first=$c; else $c->textContent=''; } } if($first!==null)$first->textContent=$t; }
 function spliceAt($p,$absIdx,$OLen,$NEW){ $runs=wRuns($p); $pos=0;$start=null;$end=null;$ls=0;$le=0; foreach($runs as $i=>$r){ $t=runText($r);$rlen=strlen($t); if($start===null && $pos+$rlen>$absIdx){$start=$i;$ls=$absIdx-$pos;} if($pos+$rlen>=$absIdx+$OLen){$end=$i;$le=$absIdx+$OLen-$pos;break;} $pos+=$rlen; } if($start===null)return false; if($start===$end){ $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW.substr($t,$le)); } else { $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW); for($i=$start+1;$i<$end;$i++)setRunText($runs[$i],''); $te=runText($runs[$end]); setRunText($runs[$end],substr($te,$le)); } return true; }
 function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $idx=strpos($full,$OLD); if($idx===false)return false; return spliceAt($p,$idx,strlen($OLD),$NEW); }
-function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws)spliceAt($p,$ws,$e-$ws,' '.$value.', '); }
+function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws){ $ins=(trim(substr($full,$e))==='')?' '.$value:' '.$value.', '; spliceAt($p,$ws,$e-$ws,$ins); } }
 
+// Title for the name line: keep the original "ທ້າວ ຫຼື ນາງ" wording if gender unknown.
+$nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 $opsByAnchor=[
  '/ຄປຕ'=>[['dots','ເລກທີ',$row['doc_no']]],
  'PREFIXວັນທີ'=>[['dots','ວັນທີ',$today]],
- 'ທ້າວ ຫຼື ນາງ'=>[['phrase','ທ້າວ ຫຼື ນາງ',$title],['dots','ທ້າວ',$row['first_name']],['dots','ນາມສະກຸນ',$row['last_name']]],
- 'ວັນ,ເດືອນ,ປີເກີດ'=>[['dots','ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob'])],['dots','ບ້ານເກີດ',$birthVillageName],['dots','ເມືອງ',$birthDistrictName]],
+ // Name line: put title+first_name in ONE phrase replacement. (Old code replaced the
+ // phrase with the title first, then looked for label ທ້າວ to fill the first name —
+ // which no longer existed for females, so ນາງ rows lost the first name.)
+ 'ທ້າວ ຫຼື ນາງ'=>[['phrase','ທ້າວ ຫຼື ນາງ',trim($nameTitle.' '.$row['first_name'])],['dots','ນາມສະກຸນ',$row['last_name']]],
+ 'ວັນ,ເດືອນ,ປີເກີດ'=>[['dots','ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob'])],['dots','ບ້ານເກີດ',$birthVillageName],['dots','ຕາແສງ',$birthTasengName],['dots','ເມືອງ',$birthDistrictName]],
  'ເຊື້ອຊາດ'=>[['dots','ແຂວງ',$birthProvinceName],['dots','ເຊື້ອຊາດ',$originName],['dots','ສັນຊາດ',$nationalityName],['dots','ສາສະໜາ',$religionName],['dots','ຊົນເຜົ່າ',$ethnicityName],['dots','ອາຊີບ',$occupationName],['dots','ບັດປະຈໍາຕົວເລກທີ',$row['id_card']],['dots','ລົງວັນທີ',fmtDate($row['id_card_issue_date'])]],
- 'ເຮືອນເລກທີ'=>[['dots','ເຮືອນເລກທີ',$row['house_no']],['dots','ໜ່ວຍທີ',$row['unit_no']],['dots','ບ້ານ',$row['village_name']]],
+ 'ເຮືອນເລກທີ'=>[['dots','ເຮືອນເລກທີ',$row['house_no']],['dots','ໜ່ວຍທີ',$row['unit_no']],['dots','ຕາແສງ',$resTaseng],['dots','ບ້ານ',$resVillage],['dots','ເມືອງ',$resDistrict],['dots','ແຂວງ',$resProvince]],
  'ສໍາມະໂນຄົວ'=>[['dots','ຂື້ນສໍາມະໂນຄົວເລກທີ',$res['household_book_no']??''],['dots','ລົງວັນທີ',fmtDate($res['household_book_date']??'')]],
  'ເບີໂທລະສັບ'=>[['dots','ເບີໂທລະສັບ',$row['phone']],['dots','ເປັນລູກຂອງທ້າວ',$res['father_name']??'']],
- 'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ບ້ານ',$res['parents_address']??'']],
+ 'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ໜ່ວຍ',$parentUnit],['dots','ຕາແສງ',$parentTaseng],['dots','ບ້ານ',$parentVillage],['dots','ເມືອງ',$parentDistrict],['dots','ແຂວງ',$parentProvince]],
 ];
 // residence geo names from the citizen's CURRENT residence (not hardcoded)
 $resTaseng = $row['taseng_name'] ?: '';
@@ -169,7 +184,7 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:55px 0 20px !important; }
 .pv-emblem { text-align:center; margin:0 0 6px; }
 .pv-emblem img { width:1.5cm; height:auto; }
-.pv-sign { margin:20px 0 0 65% !important; width:30%; text-align:center; white-space:nowrap; }
+.pv-sign { margin:20px 5% 0 65% !important; width:30%; text-align:center; white-space:nowrap; }
 .pv-sign + .pv-sign { margin-top:110px !important; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }

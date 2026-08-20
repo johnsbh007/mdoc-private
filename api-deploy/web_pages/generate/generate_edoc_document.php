@@ -47,8 +47,24 @@ function geoName($conn, $table, $id, $fallback) {
   return $fallback ?: '';
 }
 $birthVillageName  = geoName($conn, 'edoc_village',  $row['birth_village_id']  ?? null, $row['birth_village']);
+$birthTasengName   = geoName($conn, 'edoc_taseng',   $row['birth_taseng_id']   ?? null, '');
 $birthDistrictName = geoName($conn, 'edoc_district', $row['birth_district_id'] ?? null, $row['birth_district']);
 $birthProvinceName = geoName($conn, 'edoc_province', $row['birth_province_id'] ?? null, $row['birth_province']);
+// parent address: structured geo from new fields
+function geoNameId($conn, $table, $id) {
+  if ($id) {
+    $st = $conn->prepare("SELECT name_lo FROM $table WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    $n = $st->fetchColumn();
+    if ($n !== false) return $n;
+  }
+  return '';
+}
+$parentUnit      = $res['parents_unit_no'] ?? '';
+$parentVillage   = geoNameId($conn, 'edoc_village',   $res['parents_village_id']   ?? null);
+$parentTaseng    = geoNameId($conn, 'edoc_taseng',    $res['parents_taseng_id']    ?? null);
+$parentDistrict  = geoNameId($conn, 'edoc_district',  $res['parents_district_id']  ?? null);
+$parentProvince  = geoNameId($conn, 'edoc_province',  $res['parents_province_id']  ?? null);
 
 function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
 
@@ -133,20 +149,26 @@ function fillDots($p, $label, $value) {
   while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
   while ($e < $len && $full[$e] === '.') $e++;
-  if ($e > $ws) spliceAt($p, $ws, $e - $ws, ' ' . $value . ', ');
+  if ($e > $ws) {
+    $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
+    spliceAt($p, $ws, $e - $ws, $ins);
+  }
 }
 
+// Title for the name line: keep the original "ທ້າວ ຫຼື ນາງ" wording if gender unknown.
+$nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 // ops per paragraph (matched by unique anchor substring, in document order)
 $opsByAnchor = [
   '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
   'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
-  'ທ້າວ ຫຼື ນາງ' => [['phrase', 'ທ້າວ ຫຼື ນາງ', $title], ['dots', 'ທ້າວ', $row['first_name']], ['dots', 'ນາມສະກຸນ', $row['last_name']]],
-  'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ເມືອງ', $birthDistrictName]],
+  // Name line: put title+first_name in ONE phrase replacement.
+  'ທ້າວ ຫຼື ນາງ' => [['phrase', 'ທ້າວ ຫຼື ນາງ', trim($nameTitle . ' ' . $row['first_name'])], ['dots', 'ນາມສະກຸນ', $row['last_name']]],
+  'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ຕາແສງ', $birthTasengName], ['dots', 'ເມືອງ', $birthDistrictName]],
   'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
-  'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ບ້ານ', $row['village_name']]],
+  'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $res['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $res['district_name'] ?? ''], ['dots', 'ແຂວງ', $res['province_name'] ?? '']],
   'ສໍາມະໂນຄົວ' => [['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $res['household_book_no'] ?? ''], ['dots', 'ລົງວັນທີ', fmtDate($res['household_book_date'] ?? '')]],
   'ເບີໂທລະສັບ' => [['dots', 'ເບີໂທລະສັບ', $row['phone']], ['dots', 'ເປັນລູກຂອງທ້າວ', $res['father_name'] ?? '']],
-  'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ບ້ານ', $res['parents_address'] ?? '']],
+  'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ໜ່ວຍ', $parentUnit], ['dots', 'ຕາແສງ', $parentTaseng], ['dots', 'ບ້ານ', $parentVillage], ['dots', 'ເມືອງ', $parentDistrict], ['dots', 'ແຂວງ', $parentProvince]],
 ];
 
 $paras = $dom->getElementsByTagNameNS($ns, 'p');
