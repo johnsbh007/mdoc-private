@@ -8,10 +8,15 @@ $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load doc + citizen + residence data ──────────────────────────────
-$d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name
+$d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
+                            f.name_lo AS taseng_name, g.name_lo AS district_name,
+                            h.name_lo AS province_name
                      FROM edoc_document d
                      JOIN edoc_citizen c ON d.citizen_id = c.id
                      LEFT JOIN edoc_village v ON c.village_id = v.id
+                     LEFT JOIN edoc_taseng f ON c.taseng_id = f.id
+                     LEFT JOIN edoc_district g ON c.district_id = g.id
+                     LEFT JOIN edoc_province h ON c.province_id = h.id
                      WHERE d.id = ?");
 $d->execute([$doc_id]);
 $row = $d->fetch(PDO::FETCH_ASSOC);
@@ -185,10 +190,14 @@ $opsByAnchor = [
   'ທ້າວ ຫຼື ນາງ' => [['name', trim($nameTitle . ' ' . $row['first_name']), $row['last_name']]],
   'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ຕາແສງ', $birthTasengName], ['dots', 'ເມືອງ', $birthDistrictName]],
   'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
-  'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $res['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $res['district_name'] ?? ''], ['dots', 'ແຂວງ', $res['province_name'] ?? '']],
+  'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $row['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $row['district_name'] ?? ''], ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
   'ສໍາມະໂນຄົວ' => [['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $res['household_book_no'] ?? ''], ['dots', 'ລົງວັນທີ', fmtDate($res['household_book_date'] ?? '')]],
   'ເບີໂທລະສັບ' => [['dots', 'ເບີໂທລະສັບ', $row['phone']], ['dots', 'ເປັນລູກຂອງທ້າວ', $res['father_name'] ?? '']],
-  'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ໜ່ວຍ', $parentUnit], ['dots', 'ຕາແສງ', $parentTaseng], ['dots', 'ບ້ານ', $parentVillage], ['dots', 'ເມືອງ', $parentDistrict], ['dots', 'ແຂວງ', $parentProvince]],
+  'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ໜ່ວຍ', $parentUnit], ['dots', 'ຕາແສງ', $parentTaseng], ['dots', 'ບ້ານ', $parentVillage]],
+  // Parent address is split across two paragraphs: village/taseng (above) and ເມືອງ/ແຂວງ (the
+  // following paragraph). Anchor the district/province fill on the ແຂວງ label so it lands in the
+  // correct paragraph; otherwise those dots stay unfilled.
+  'ແຂວງ' => [['dots', 'ເມືອງ', $parentDistrict], ['dots', 'ແຂວງ', $parentProvince]],
 ];
 
 $paras = $dom->getElementsByTagNameNS($ns, 'p');

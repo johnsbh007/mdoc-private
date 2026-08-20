@@ -119,7 +119,11 @@ $opsByAnchor=[
  'ເຮືອນເລກທີ'=>[['dots','ເຮືອນເລກທີ',$row['house_no']],['dots','ໜ່ວຍທີ',$row['unit_no']],['dots','ຕາແສງ',$resTaseng],['dots','ບ້ານ',$resVillage],['dots','ເມືອງ',$resDistrict],['dots','ແຂວງ',$resProvince]],
  'ສໍາມະໂນຄົວ'=>[['dots','ຂື້ນສໍາມະໂນຄົວເລກທີ',$res['household_book_no']??''],['dots','ລົງວັນທີ',fmtDate($res['household_book_date']??'')]],
  'ເບີໂທລະສັບ'=>[['dots','ເບີໂທລະສັບ',$row['phone']],['dots','ເປັນລູກຂອງທ້າວ',$res['father_name']??'']],
- 'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ໜ່ວຍ',$parentUnit],['dots','ຕາແສງ',$parentTaseng],['dots','ບ້ານ',$parentVillage],['dots','ເມືອງ',$parentDistrict],['dots','ແຂວງ',$parentProvince]],
+ 'ແລະ ນາງ'=>[['dots','ແລະ ນາງ',$res['mother_name']??''],['dots','ໜ່ວຍ',$parentUnit],['dots','ຕາແສງ',$parentTaseng],['dots','ບ້ານ',$parentVillage]],
+ // Parent address is split across two paragraphs: village/taseng (above) and ເມືອງ/ແຂວງ (the
+ // following paragraph). Anchor the district/province fill on the ແຂວງ label so it lands in the
+ // correct paragraph; otherwise those dots stay unfilled.
+ 'ແຂວງ'=>[['dots','ເມືອງ',$parentDistrict],['dots','ແຂວງ',$parentProvince]],
 ];
 
 $paras=$dom->getElementsByTagNameNS($ns,'p');
