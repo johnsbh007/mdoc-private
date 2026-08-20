@@ -21,6 +21,16 @@ if ($edit_doc_id) {
     $editData = $st->fetch(PDO::FETCH_ASSOC);
     if ($editData) {
         $pageTitle = "ແກ້ໄຂຮ່າງ - Edit Draft";
+        // merge residence-specific structured fields (unit + geo) so the edit
+        // form can pre-populate them (Bug: Unit/geo lost on re-edit)
+        if ((int)$editData['doc_type_id'] === 1) {
+            $r = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
+            $r->execute([$edit_doc_id]);
+            $res = $r->fetch(PDO::FETCH_ASSOC);
+            if ($res) {
+                foreach ($res as $k => $v) { $editData[$k] = $v; }
+            }
+        }
         // resolve type/item from the doc itself
         $doc_type_id = (int)$editData['doc_type_id'];
         $t = $conn->prepare("SELECT id, doc_type_code, name_lo, name_en FROM edoc_doc_type WHERE id=? AND is_active=1");

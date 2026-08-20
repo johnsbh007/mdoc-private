@@ -109,8 +109,6 @@ if ($isResidence) {
         $pDistName = geoName($conn, 'edoc_district', $res['parents_district_id'] ?? null);
         $pTasName  = geoName($conn, 'edoc_taseng',   $res['parents_taseng_id']  ?? null);
         $pVilName  = geoName($conn, 'edoc_village',  $res['parents_village_id']  ?? null);
-        // legacy text fallback (older records stored free text here)
-        $pAddrText = trim((string)($res['parents_address'] ?? ''));
     }
 }
 
@@ -223,17 +221,18 @@ require '../components/layout.php';
       <?php
       // Single canonical parents-address block. Field 11 is EXCLUDED from the
       // $fields loop above for residences, so this is the only place it shows —
-      // guaranteeing no duplicate "Parents Address" title for anyone (new docs
-      // with geo cascade, or older docs with legacy free-text parents_address).
+      // guaranteeing no duplicate "Parents Address" title. The structured geo
+      // cascade (edoc_dc_residence) is the source of truth; the legacy free-text
+      // parents_address column is NOT shown (it holds stale pre-geo data).
       $pGeo = implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]));
-      $hasParents = ($res && (($res['parents_unit_no'] ?? '') !== '' || $pGeo !== '' || $pAddrText !== ''));
+      $hasParents = ($res && (($res['parents_unit_no'] ?? '') !== '' || $pGeo !== ''));
       ?>
       <?php if ($hasParents): ?>
       <hr>
       <div class="rev-grid">
         <div><p class="lbl">ໜ່ວຍ (Parents Unit)</p><p class="val"><?= htmlspecialchars($res['parents_unit_no'] ?? '') ?></p></div>
         <div><p class="lbl">ທີ່ຢູ່ພໍ່ແມ່ (Parents Address)</p>
-          <p class="val"><?= htmlspecialchars($pGeo !== '' ? $pGeo : $pAddrText) ?></p></div>
+          <p class="val"><?= htmlspecialchars($pGeo) ?></p></div>
       </div>
       <?php endif; ?>
     </div>
