@@ -86,10 +86,18 @@ $fields = $fd->fetchAll(PDO::FETCH_ASSOC);
 
 // ── residence cert detail (doc_type 1) ────────────────────────────────
 $res = null;
+$pProvName = $pDistName = $pTasName = $pVilName = '';
 if ($doc['doc_type_id'] == 1) {
     $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
     $rs->execute([$doc_id]);
     $res = $rs->fetch(PDO::FETCH_ASSOC);
+    if ($res) {
+        // structured parents address (not stored in edoc_form_data) — resolve geo names
+        $pProvName = geoName($conn, 'edoc_province', $res['parents_province_id'] ?? null);
+        $pDistName = geoName($conn, 'edoc_district', $res['parents_district_id'] ?? null);
+        $pTasName  = geoName($conn, 'edoc_taseng',   $res['parents_taseng_id']  ?? null);
+        $pVilName  = geoName($conn, 'edoc_village',  $res['parents_village_id']  ?? null);
+    }
 }
 
 // ── status history ────────────────────────────────────────────────────
@@ -200,14 +208,15 @@ require '../components/layout.php';
       <?php endif; ?>
       <?php if ($res): ?>
       <hr>
+      <!-- Only the structured parents-address geo fields are shown here; the
+           basic residence fields (household book no/date, father, mother,
+           related authority, purpose) are already rendered by the $fields
+           loop above from edoc_form_data — showing them again would duplicate. -->
       <div class="rev-grid">
-        <div><p class="lbl">ເລກປື້ມຄຸ້ມບ້ານ (Household Book No)</p><p class="val"><?= htmlspecialchars($res['household_book_no'] ?? '') ?></p></div>
-        <div><p class="lbl">ວັນທີປື້ມຄຸ້ມບ້ານ</p><p class="val"><?= fmtDate($res['household_book_date'] ?? '') ?></p></div>
-        <div><p class="lbl">ຊື່ພໍ່ (Father)</p><p class="val"><?= htmlspecialchars($res['father_name'] ?? '') ?></p></div>
-        <div><p class="lbl">ຊື່ແມ່ (Mother)</p><p class="val"><?= htmlspecialchars($res['mother_name'] ?? '') ?></p></div>
-        <div><p class="lbl">ທີ່ຢູ່ພໍ່ແມ່</p><p class="val"><?= htmlspecialchars($res['parents_address'] ?? '') ?></p></div>
-        <div><p class="lbl">ອຳນາດການທີ່ກ່ຽວຂ້ອງ</p><p class="val"><?= htmlspecialchars($res['related_authority'] ?? '') ?></p></div>
-        <div><p class="lbl">ຈຸດປະສົງ (Purpose)</p><p class="val"><?= htmlspecialchars($res['purpose'] ?? '') ?></p></div>
+        <div><p class="lbl">ໜ່ວຍ (Parents Unit)</p><p class="val"><?= htmlspecialchars($res['parents_unit_no'] ?? '') ?></p></div>
+        <div><p class="lbl">ທີ່ຢູ່ພໍ່ແມ່ (Parents Address)</p>
+          <p class="val"><?= htmlspecialchars(implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]))) ?>
+          <?php if (!empty($res['parents_address'])): ?><br><small class="text-muted"><?= htmlspecialchars($res['parents_address']) ?></small><?php endif; ?></p></div>
       </div>
       <?php endif; ?>
     </div>
