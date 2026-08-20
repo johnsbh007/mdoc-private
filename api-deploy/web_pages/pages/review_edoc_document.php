@@ -76,24 +76,30 @@ $bTasName   = geoName($conn, 'edoc_taseng',   $doc['birth_taseng_id']);
 $bVilName   = geoName($conn, 'edoc_village',  $doc['birth_village_id']);
 
 // ── saved document fields (edoc_form_data joined with edoc_doc_field) ─
-// Field 11 (parents address) is set to the placeholder "STRUCTURED" for new
-// submissions (the real value lives in the structured edoc_dc_residence geo
-// fields). Filter that placeholder out so it isn't shown as literal text.
+// Field 11 (parents address) is residence-specific and rendered ONCE by the
+// dedicated $res block below (from edoc_dc_residence), so we exclude it here
+// to avoid a duplicate "Parents Address" title. New submissions store the
+// placeholder "STRUCTURED" in field 11 anyway (real value is the geo cascade),
+// and older records stored free text — both cases belong to the single $res
+// block, which falls back to the legacy parents_address/text accordingly.
 $fields = [];
-$fd = $conn->prepare("SELECT f.field_label, f.field_type, fd.field_value
+$isResidence = ($doc['doc_type_id'] == 1);
+$fd = $conn->prepare("SELECT f.id AS field_id, f.field_label, f.field_type, fd.field_value
                       FROM edoc_form_data fd
                       JOIN edoc_doc_field f ON fd.field_id = f.id
                       WHERE fd.doc_id = ? ORDER BY f.id");
 $fd->execute([$doc_id]);
 foreach ($fd->fetchAll(PDO::FETCH_ASSOC) as $row) {
-    if ($row['field_value'] === 'STRUCTURED') continue;
+    if ($row['field_value'] === 'STRUCTURED') continue;          // drop placeholder
+    if ($isResidence && (int)$row['field_id'] === 11) continue;  // handled by $res block
     $fields[] = $row;
 }
 
 // ── residence cert detail (doc_type 1) ────────────────────────────────
 $res = null;
 $pProvName = $pDistName = $pTasName = $pVilName = '';
-if ($doc['doc_type_id'] == 1) {
+$pAddrText = '';
+if ($isResidence) {
     $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
     $rs->execute([$doc_id]);
     $res = $rs->fetch(PDO::FETCH_ASSOC);
@@ -103,6 +109,8 @@ if ($doc['doc_type_id'] == 1) {
         $pDistName = geoName($conn, 'edoc_district', $res['parents_district_id'] ?? null);
         $pTasName  = geoName($conn, 'edoc_taseng',   $res['parents_taseng_id']  ?? null);
         $pVilName  = geoName($conn, 'edoc_village',  $res['parents_village_id']  ?? null);
+        // legacy text fallback (older records stored free text here)
+        $pAddrText = trim((string)($res['parents_address'] ?? ''));
     }
 }
 
@@ -212,18 +220,20 @@ require '../components/layout.php';
       <?php else: ?>
       <p class="text-muted mb-0">ຍັງບໍ່ມີຂໍ້ມູນເອກະສານ.</p>
       <?php endif; ?>
-      <?php if ($res && (($res['parents_unit_no'] ?? '') !== '' || $pProvName || $pDistName || $pTasName || $pVilName)): ?>
+      <?php
+      // Single canonical parents-address block. Field 11 is EXCLUDED from the
+      // $fields loop above for residences, so this is the only place it shows —
+      // guaranteeing no duplicate "Parents Address" title for anyone (new docs
+      // with geo cascade, or older docs with legacy free-text parents_address).
+      $pGeo = implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]));
+      $hasParents = ($res && (($res['parents_unit_no'] ?? '') !== '' || $pGeo !== '' || $pAddrText !== ''));
+      ?>
+      <?php if ($hasParents): ?>
       <hr>
-      <!-- Only the NEW structured parents-address geo fields are shown here.
-           Basic residence fields (household book no/date, father, mother,
-           parents address text, related authority, purpose) are ALREADY
-           rendered by the $fields loop above from edoc_form_data (fields 7-13).
-           This block appears only when structured parents data exists, so it
-           never duplicates what the $fields loop already shows. -->
       <div class="rev-grid">
         <div><p class="lbl">ໜ່ວຍ (Parents Unit)</p><p class="val"><?= htmlspecialchars($res['parents_unit_no'] ?? '') ?></p></div>
         <div><p class="lbl">ທີ່ຢູ່ພໍ່ແມ່ (Parents Address)</p>
-          <p class="val"><?= htmlspecialchars(implode(' › ', array_filter([$pProvName, $pDistName, $pTasName, $pVilName]))) ?></p></div>
+          <p class="val"><?= htmlspecialchars($pGeo !== '' ? $pGeo : $pAddrText) ?></p></div>
       </div>
       <?php endif; ?>
     </div>
