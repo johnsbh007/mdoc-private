@@ -27,6 +27,8 @@ $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $docs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total = count($docs);
+// Show a friendly popup when a status filter is active but returned no records
+$showEmptyStatusAlert = ($statusFilter !== '' && empty($docs));
 
 // Status code -> display label (Lao / English). Order: draft, submitted, then the rest.
 $status_labels = [
@@ -147,9 +149,6 @@ require '../components/layout.php';
             </td>
           </tr>
           <?php endforeach; ?>
-          <?php if (empty($docs)): ?>
-          <tr><td colspan="8" class="text-center py-5" style="color:#aaa;"><i class="fas fa-folder-open fa-2x mb-2 d-block"></i> ຍັງບໍ່ມີຄຳຮ້ອງ</td></tr>
-          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -173,6 +172,15 @@ require '../components/layout_footer.php';
 $(document).ready(function() {
     var table = $('#docTable').DataTable({ paging: true, pageLength: 20, ordering: false, searching: true, info: true, language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/lo.json' }, dom: 'tip' });
     $('#searchDoc').on('keyup', function() { table.search(this.value).draw(); });
+    <?php if ($showEmptyStatusAlert): ?>
+    Swal.fire({
+      icon: 'info',
+      title: 'ບໍ່ມີເອກະສານສະຖານະນີ້',
+      text: 'ບໍ່ມີຄຳຮ້ອງໃນສະຖານະ <?= htmlspecialchars($status_labels[$statusFilter] ?? $statusFilter, ENT_QUOTES, 'UTF-8') ?>',
+      confirmButtonColor: '#044482',
+      confirmButtonText: 'ຕົກລົງ'
+    });
+    <?php endif; ?>
 });
 function filterStatus() { var s = $('#statusFilter').val(); window.location.href = 'list_edoc_document.php' + (s ? '?status=' + s : ''); }
 
