@@ -10,13 +10,28 @@ $doc_id = (int)($_POST['doc_id'] ?? 0);
 if ($doc_id <= 0) { echo json_encode(['status'=>'error','message'=>'Missing doc_id']); exit; }
 
 try {
-    // load document + confirm it is in ISSUED (approved, awaiting payment) state
-    $st = $conn->prepare("SELECT id, status, amount FROM edoc_document WHERE id=?");
+    // load document + its item fee, confirm it is in approved (awaiting payment) state
+    $st = $conn->prepare("SELECT d.id, d.status, d.amount, di.price AS item_price
+                          FROM edoc_document d
+                          LEFT JOIN edoc_doc_item di ON d.doc_item_id = di.id
+                          WHERE d.id=?");
     $st->execute([$doc_id]);
     $doc = $st->fetch(PDO::FETCH_ASSOC);
     if (!$doc) { echo json_encode(['status'=>'error','message'=>'Document not found']); exit; }
     if (!in_array($doc['status'], ['ISSUED','PENDING_PAYMENT'], true)) {
         echo json_encode(['status'=>'error','message'=>'Payment evidence can only be uploaded when the document is approved (status: '.$doc['status'].')']); exit;
+    }
+
+    // --- validate paid amount against the expected fee (from document amount or item price) ---
+    $expectedFee = (float)($doc['amount'] ?: $doc['item_price']);
+    $amountRaw   = trim((string)($_POST['amount'] ?? ''));
+    if ($amountRaw === '') {
+        echo json_encode(['status'=>'error','message'=>'ກະລຸນາປ້ອນຈຳນວນເງິນທີ່ຈ່າຍ (Amount paid is required)']); exit;
+    }
+    $amount = (float)$amountRaw;
+    if ($amount < 0) { echo json_encode(['status'=>'error','message'=>'ຈຳນວນເງິນບໍ່ຖືກຕ້ອງ (Invalid amount)']); exit; }
+    if ($expectedFee > 0 && $amount + 1e-6 < $expectedFee) {
+        echo json_encode(['status'=>'error','message'=>'ຈຳນວນເງິນທີ່ຈ່າຍ ('.number_format($amount,0).' ກີບ) ຕໍ່າກວ່າຄ່າທຳນຽມທີ່ກຳນົດ ('.number_format($expectedFee,0).' ກີບ) — ບໍ່ສາມາດຮັບການຊຳລະໄດ້ (Amount paid is less than the required fee; payment not accepted)']); exit;
     }
 
     // --- validate upload ---
@@ -49,7 +64,6 @@ try {
 
     $note   = trim($_POST['note'] ?? '');
     $pay_ref = trim($_POST['pay_ref'] ?? '');
-    $amount = ($_POST['amount'] !== '' && $_POST['amount'] !== null) ? (float)$_POST['amount'] : null;
 
     $conn->beginTransaction();
 
