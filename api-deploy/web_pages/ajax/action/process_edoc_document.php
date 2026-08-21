@@ -98,6 +98,7 @@ try {
             if ($doc['status'] !== 'PAID') { $ok=false; $msg='ຕ້ອງຊຳລະເງິນກ່ອນເຊັນເອກະສານ'; }
             else {
                 $newStatus='SIGNED';
+                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
                 $msg='ເຊັນເອກະສານແລ້ວ (SIGNED)';
             }
             break;
@@ -114,6 +115,7 @@ try {
                     $conn->prepare("INSERT INTO edoc_document_handover (doc_id, recipient_name, recipient_id_card, handover_date, changed_by) VALUES (?,?,?,?,?)")
                           ->execute([$id, $recipientName, $recipientId, $handoverDate, $changed_by]);
                     $newStatus='HANDOVER';
+                    $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
                     $msg='ສົ່ງມອບເອກະສານໃຫ້ '.$recipientName.' ແລ້ວ (HANDOVER)';
                 }
             }
