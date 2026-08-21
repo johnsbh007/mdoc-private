@@ -15,6 +15,7 @@ if ($statusFilter) { $where = "WHERE d.status = ?"; $params[] = $statusFilter; }
 
 $sql = "SELECT d.*, di.name_lo AS item_name, di.doc_item_code, di.doc_type_id, c.first_name, c.last_name,
                v.name_lo AS village_name, t.name_lo AS taseng_name,
+               COALESCE(NULLIF(d.amount,0), di.price) AS eff_amount,
                (SELECT status FROM edoc_document_status WHERE doc_id = d.id ORDER BY id DESC LIMIT 1) AS last_status
         FROM edoc_document d
         JOIN edoc_doc_item di ON d.doc_item_id = di.id
@@ -132,7 +133,7 @@ require '../components/layout.php';
             <td class="text-center"><span class="prov-code-badge"><?= htmlspecialchars($row['doc_no']) ?></span></td>
             <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?><br><small class="text-muted"><?= htmlspecialchars($row['village_name'] ?? '-') ?></small></td>
             <td><?= htmlspecialchars($row['item_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['doc_item_code']) ?>]</small></td>
-            <td class="text-center"><?= number_format($row['amount'], 2) ?></td>
+            <td class="text-center"><?= number_format((float)($row['eff_amount'] ?: 0), 2) ?></td>
             <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $status_labels[$row['status']] ?? $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
             <td class="text-center action-cell">
