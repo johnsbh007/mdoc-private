@@ -127,6 +127,12 @@ $ev = $conn->prepare("SELECT * FROM edoc_payment_evidence WHERE doc_id = ? ORDER
 $ev->execute([$doc_id]);
 $evidence = $ev->fetchAll(PDO::FETCH_ASSOC);
 
+// ── handover record (recipient name / national ID / date) ─────────────
+$handover = null;
+$hv = $conn->prepare("SELECT * FROM edoc_document_handover WHERE doc_id = ?");
+$hv->execute([$doc_id]);
+$handover = $hv->fetch(PDO::FETCH_ASSOC);
+
 require '../components/layout.php';
 ?>
 <style>
@@ -328,6 +334,21 @@ require '../components/layout.php';
   </div>
   <?php endif; ?>
 
+  <!-- HANDOVER RECORD -->
+  <?php if ($handover): ?>
+  <div class="rev-card">
+    <div class="rev-head"><i class="fas fa-hand-holding"></i> ສົ່ງມອບເອກະສານ (Handover Record)</div>
+    <div class="rev-body">
+      <div class="rev-grid">
+        <div><p class="lbl">ຜູ້ຮັບເອກະສານ (Recipient)</p><p class="val fw-bold"><?= htmlspecialchars($handover['recipient_name']) ?></p></div>
+        <div><p class="lbl">ເລກບັດປະຈຳຕົວ (National ID)</p><p class="val"><?= htmlspecialchars($handover['recipient_id_card'] ?? '—') ?></p></div>
+        <div><p class="lbl">ວັນທີສົ່ງມອບ (Handover date)</p><p class="val"><?= fmtDate($handover['handover_date']) ?></p></div>
+        <div><p class="lbl">ຜູ້ດຳເນີນການ (By)</p><p class="val"><?= htmlspecialchars($handover['changed_by']) ?></p></div>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <!-- ACTIONS -->
   <div class="rev-card">
     <div class="rev-head"><i class="fas fa-tasks"></i> ດຳເນີນການ (Actions)</div>
@@ -345,7 +366,23 @@ require '../components/layout.php';
           <button class="btn btn-success btn-act" onclick="doAction('pay')"><i class="fas fa-check-double"></i> ຢືນຢັນການຊຳລະ (Confirm Paid)</button>
           <button class="btn btn-danger btn-act" onclick="doAction('reject_payment')"><i class="fas fa-times-circle"></i> ປະຕິເສດສະລິບ (Reject Slip)</button>
         <?php elseif ($status === 'PAID'): ?>
-          <button class="btn btn-success btn-act" onclick="doAction('issue')"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
+          <button class="btn btn-success btn-act" onclick="doAction('sign')"><i class="fas fa-signature"></i> ເຊັນແລ້ວ (Signed)</button>
+        <?php elseif ($status === 'SIGNED'): ?>
+          <div class="w-100 mb-2">
+            <label class="form-label small mb-1"><i class="fas fa-user-check"></i> ຂໍ້ມູນຜູ້ຮັບເອກະສານ (Recipient info) — ບັນທຶກກ່ອນສົ່ງມອບ</label>
+            <div class="row g-2">
+              <div class="col-md-5">
+                <input type="text" id="hvName" class="form-control form-control-sm" placeholder="ຊື່ ແລະ ນາມສະກຸນຜູ້ຮັບ (Recipient name)">
+              </div>
+              <div class="col-md-4">
+                <input type="text" id="hvIdCard" class="form-control form-control-sm" placeholder="ເລກບັດປະຈຳຕົວ (National ID)">
+              </div>
+              <div class="col-md-3">
+                <input type="date" id="hvDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-success btn-act" onclick="doHandover()"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
         <?php endif; ?>
         <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຕ້ອງປັບປຸງ (Request Change)</button>
@@ -402,6 +439,34 @@ function doAction(action) {
   }).then((result) => {
     if (!result.isConfirmed) return;
     $.post('../ajax/action/process_edoc_document.php', { id: <?= $doc_id ?>, action, remark }, function(res) {
+      let r = res;
+      try { if (typeof res === 'string') r = JSON.parse(res); } catch(e) {}
+      if (r && r.status === 'success') {
+        Swal.fire({ title: 'ສຳເລັດ', text: r.message, icon: 'success', timer: 1500, showConfirmButton: false })
+          .then(() => location.reload());
+      } else {
+        Swal.fire('ຜິດພາດ', (r && r.message) || 'ເກີດຂໍ້ຜິດພາດ', 'error');
+      }
+    }).fail(function() { Swal.fire('ຜິດພາດ', 'ເຊື່ອມຕໍ່ບໍ່ໄດ້!', 'error'); });
+  });
+}
+function doHandover() {
+  const name   = document.getElementById('hvName').value.trim();
+  const idCard = document.getElementById('hvIdCard').value.trim();
+  const date   = document.getElementById('hvDate').value;
+  if (!name) { Swal.fire('ແຈ້ງເຕືອນ!', 'ກະລຸນາປ້ອນຊື່ຜູ້ຮັບ (recipient name)', 'warning'); return; }
+  Swal.fire({
+    title: 'ຢືນຢັນການສົ່ງມອບ?',
+    html: 'ມອບເອກະສານໃຫ້ <strong>' + name.replace(/</g, '&lt;') + '</strong>?',
+    icon: 'question', showCancelButton: true,
+    confirmButtonColor: '#044482', cancelButtonColor: '#bbb',
+    confirmButtonText: 'ຕົກລົງ', cancelButtonText: 'ຍົກເລີກ'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+    $.post('../ajax/action/process_edoc_document.php', {
+      id: <?= $doc_id ?>, action: 'issue', remark: document.getElementById('actRemark').value.trim(),
+      recipient_name: name, recipient_id_card: idCard, handover_date: date
+    }, function(res) {
       let r = res;
       try { if (typeof res === 'string') r = JSON.parse(res); } catch(e) {}
       if (r && r.status === 'success') {

@@ -93,12 +93,29 @@ try {
                 $msg='ຢືນຢັນການຊຳລະສຳເລັດ (ໃບເກັບກ້ຽວ '.$receipt_no.')';
             }
             break;
-        case 'issue':
-            if ($doc['status'] !== 'PAID') { $ok=false; $msg='ຕ້ອງຊຳລະເງິນກ່ອນອອກເອກະສານ'; }
+        case 'sign':
+            // PAID -> SIGNED: officer signs the printed document (no data entry)
+            if ($doc['status'] !== 'PAID') { $ok=false; $msg='ຕ້ອງຊຳລະເງິນກ່ອນເຊັນເອກະສານ'; }
             else {
-                $newStatus='HANDOVER';
-                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")->execute([$newStatus, $id]);
-                $msg='ອອກເອກະສານ/ສົ່ງມອບແລ້ວ (HANDOVER)';
+                $newStatus='SIGNED';
+                $msg='ເຊັນເອກະສານແລ້ວ (SIGNED)';
+            }
+            break;
+        case 'issue':
+            // SIGNED -> HANDOVER: record who received the document (recipient name / national ID / date)
+            if ($doc['status'] !== 'SIGNED') { $ok=false; $msg='ຕ້ອງເຊັນເອກະສານກ່ອນສົ່ງມອບ'; }
+            else {
+                $recipientName = trim($_POST['recipient_name'] ?? '');
+                $recipientId   = trim($_POST['recipient_id_card'] ?? '');
+                $handoverDate  = trim($_POST['handover_date'] ?? '');
+                if ($recipientName === '') { $ok=false; $msg='ກະລຸນາປ້ອນຊື່ຜູ້ຮັບ (recipient name)'; }
+                else {
+                    if ($handoverDate === '') $handoverDate = date('Y-m-d');
+                    $conn->prepare("INSERT INTO edoc_document_handover (doc_id, recipient_name, recipient_id_card, handover_date, changed_by) VALUES (?,?,?,?,?)")
+                          ->execute([$id, $recipientName, $recipientId, $handoverDate, $changed_by]);
+                    $newStatus='HANDOVER';
+                    $msg='ສົ່ງມອບເອກະສານໃຫ້ '.$recipientName.' ແລ້ວ (HANDOVER)';
+                }
             }
             break;
         default:

@@ -136,7 +136,7 @@ require '../components/layout.php';
             <td class="text-center action-cell">
               <?php if (in_array($row['status'], ['DRAFT','NEEDS_REVISION'], true)): ?>
                 <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> <?= $row['status'] === 'NEEDS_REVISION' ? 'ປັບປຸງ' : 'ແກ້ໄຂ' ?></button>
-              <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID'], true)): ?>
+              <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED'], true)): ?>
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
               <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
