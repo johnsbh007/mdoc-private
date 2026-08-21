@@ -88,10 +88,13 @@ Rule of thumb: any table starting with `edoc_` is ours; anything else in this da
                  colleague's accounting (hand-off, no direct posting)
                  │
                  ▼
-            SIGNED (ເຊັນແລ້ວ) — signatory signs official document
-                 │   (electronic sign or inked copy scanned to edoc_file_store)
+            SIGNED (ເຊັນແລ້ວ) — officer signs the printed document;
+                 (status set via ເຊັນແລ້ວ button on review page, no data entry)
+                 │
                  ▼
-            HANDOVER (ສົ່ງໃຫ້ແລ້ວ) — document ready for collection
+            HANDOVER (ສົ່ງໃຫ້ແລ້ວ) — document handed to citizen;
+                 recipient name + national ID + date recorded in
+                 edoc_document_handover (officer enters via ສົ່ງມອບ form on review page)
                  │
         ┌────────┴─────────┐
         ▼                  ▼
