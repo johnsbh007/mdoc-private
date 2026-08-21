@@ -311,9 +311,10 @@ require '../components/layout.php';
             <input type="file" name="slip" id="slipFile" class="form-control form-control-sm" accept="image/*,application/pdf" required>
           </div>
           <div class="col-md-3">
+            <?php $fee = ((float)($doc['amount']) > 0) ? (float)$doc['amount'] : (float)$doc['price']; ?>
             <label class="form-label small mb-1">ຈຳນວນເງິນທີ່ຈ່າຍ (ກີບ) <span class="text-danger">*</span></label>
-            <input type="number" step="0.01" min="0" name="amount" id="slipAmount" class="form-control form-control-sm" value="<?= (float)($doc['amount'] ?: $doc['price']) ?>" required>
-            <div class="form-text" style="font-size:0.72rem; color:#b45309;">ຄ່າທຳນຽມ: <?= number_format((float)($doc['amount'] ?: $doc['price']), 0) ?> ກີບ (ຫ້າມຕໍ່າກວ່ານີ້)</div>
+            <input type="number" step="0.01" min="0" name="amount" id="slipAmount" class="form-control form-control-sm" value="<?= $fee ?>" required>
+            <div class="form-text" style="font-size:0.72rem; color:#b45309;">ຄ່າທຳນຽມ: <?= number_format($fee, 0) ?> ກີບ (ຫ້າມຕໍ່າກວ່ານີ້)</div>
           </div>
           <div class="col-md-3">
             <label class="form-label small mb-1">ເລກອ້າງອີງ (Bank ref)</label>

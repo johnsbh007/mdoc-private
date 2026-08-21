@@ -23,7 +23,10 @@ try {
     }
 
     // --- validate paid amount against the expected fee (from document amount or item price) ---
-    $expectedFee = (float)($doc['amount'] ?: $doc['item_price']);
+    // NOTE: PDO returns DECIMAL as string; "0.00" is truthy in PHP, so compare numerically
+    $docAmount   = (float)($doc['amount'] ?? 0);
+    $itemPrice   = (float)($doc['item_price'] ?? 0);
+    $expectedFee = $docAmount > 0 ? $docAmount : $itemPrice;
     $amountRaw   = trim((string)($_POST['amount'] ?? ''));
     if ($amountRaw === '') {
         echo json_encode(['status'=>'error','message'=>'ກະລຸນາປ້ອນຈຳນວນເງິນທີ່ຈ່າຍ (Amount paid is required)']); exit;
