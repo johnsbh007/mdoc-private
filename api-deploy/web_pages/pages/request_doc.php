@@ -76,7 +76,7 @@ if (!$editData) {
         $item = $item->fetch(PDO::FETCH_ASSOC);
     }
 }
-// mode: 'draft' = normal New Request (allow save-as-draft), 'submit' = walk-in citizen request (submit only, becomes SUBMITTED)
+// mode: 'draft' = normal New Request (allow save-as-draft), 'submit' = walk-in citizen request (submit only, becomes PENDING_APPROVAL)
 $mode = in_array(($_GET['mode'] ?? ''), ['draft','submit']) ? $_GET['mode'] : 'draft';
 $isSubmit = ($mode === 'submit');
 $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
@@ -446,7 +446,7 @@ function saveRequest(mode) {
     success: function(res){
       const r = parseJson(res);
       if (r && r.status === 'success') {
-        Swal.fire('ສຳເລັດ', r.message, 'success').then(() => { window.location.href='list_edoc_document.php?status=' + (mode==='draft'?'DRAFT':'SUBMITTED'); });
+        Swal.fire('ສຳເລັດ', r.message, 'success').then(() => { window.location.href='list_edoc_document.php?status=' + (mode==='draft'?'DRAFT':'PENDING_APPROVAL'); });
       } else {
         Swal.fire('ຜິດພາດ', (r && r.message) || 'ເກີດຂໍ້ຜິດພາດ', 'error');
       }

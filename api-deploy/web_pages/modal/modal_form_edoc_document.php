@@ -110,7 +110,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">ສະຖານະເຊົ້າຮ່າງ</label>
-              <div class="form-control bg-light" id="doc_status_hint">SUBMITTED</div>
+              <div class="form-control bg-light" id="doc_status_hint">PENDING_APPROVAL</div>
             </div>
           </div>
 

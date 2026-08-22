@@ -25,14 +25,8 @@ try {
 
     switch ($action) {
         case 'approve':
-            if ($doc['status'] === 'SUBMITTED') {
-                $newStatus = 'PENDING_APPROVAL';
-                // staff verifies the submitted data, then it goes to approval
-                // (audit trail via edoc_document_status below; verified_by not in schema)
-                $conn->prepare("UPDATE edoc_document SET status=? WHERE id=?")
-                      ->execute([$newStatus, $id]);
-                $msg = 'ຢືນຢັນຂໍ້ມູນສຳເລັດ (ສົ່ງອະນຸມັດ)';
-            } else if ($doc['status'] === 'PENDING_APPROVAL') {
+            // SUBMITTED merged into PENDING_APPROVAL: submission goes straight to approval queue
+            if ($doc['status'] === 'PENDING_APPROVAL') {
                 $newStatus = 'ISSUED'; // approved -> awaiting payment (per design flow)
                 $conn->prepare("UPDATE edoc_document SET status=?, approved_by=?, approved_at=NOW() WHERE id=?")
                       ->execute([$newStatus, $changed_by, $id]);
@@ -51,7 +45,7 @@ try {
             }
             break;
         case 'reject':
-            if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
+            if (!in_array($doc['status'], ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
                 $ok=false; $msg='ບໍ່ສາມາດປະຕິເສດໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
             } else {
                 $newStatus='REJECTED';
@@ -61,7 +55,7 @@ try {
             break;
         case 'revision':
             // Request changes: doc returns to an editable state so it can be corrected & re-submitted.
-            if (!in_array($doc['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
+            if (!in_array($doc['status'], ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)) {
                 $ok=false; $msg='ບໍ່ສາມາດຂໍປັບປຸງໄດ້ (ສະຖານະປັດຈຸບັນ: '.$doc['status'].')';
             } else {
                 $newStatus='NEEDS_REVISION';

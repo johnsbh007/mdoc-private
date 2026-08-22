@@ -119,17 +119,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
 
-        $doc_status = ($mode === 'draft') ? 'DRAFT' : 'SUBMITTED';
+        $doc_status = ($mode === 'draft') ? 'DRAFT' : 'PENDING_APPROVAL';
 
         if ($doc_id > 0) {
             $stmt = $conn->prepare("UPDATE edoc_document
-                                      SET citizen_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, submitted_at=IF(?='SUBMITTED', COALESCE(submitted_at, NOW()), submitted_at)
+                                      SET citizen_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, submitted_at=IF(?='PENDING_APPROVAL', COALESCE(submitted_at, NOW()), submitted_at)
                                     WHERE id=?");
             $stmt->execute([$citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $doc_status, $doc_id]);
         } else {
             $seq = $conn->query("SELECT COUNT(*)+1 FROM edoc_document WHERE DATE(created_at)=CURDATE()")->fetchColumn();
             $doc_no = 'DOC-' . date('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
-            $submitted_at_sql = ($doc_status === 'SUBMITTED') ? 'NOW()' : 'NULL';
+            $submitted_at_sql = ($doc_status === 'PENDING_APPROVAL') ? 'NOW()' : 'NULL';
             $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, doc_item_id, village_id, off_id, status, amount, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,$submitted_at_sql)");
             $stmt->execute([$doc_no, $citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $created_by]);
             $doc_id = (int)$conn->lastInsertId();
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // invoice only for submitted records
-        if ($doc_status === 'SUBMITTED') {
+        if ($doc_status === 'PENDING_APPROVAL') {
             $seq = $conn->query("SELECT COUNT(*)+1 FROM edoc_document WHERE DATE(created_at)=CURDATE()")->fetchColumn();
             $inv_no = 'INV-' . date('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
             $invStmt = $conn->prepare("SELECT COUNT(*) FROM edoc_invoice WHERE doc_id=?");

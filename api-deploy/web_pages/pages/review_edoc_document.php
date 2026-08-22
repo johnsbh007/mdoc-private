@@ -360,9 +360,7 @@ require '../components/layout.php';
         <textarea id="actRemark" class="form-control" rows="2" placeholder="ສາເຫດທີ່ປະຕິເສດ ຫຼື ໝາຍເຫດອື່ນໆ..."></textarea>
       </div>
       <div class="d-flex gap-2 flex-wrap">
-        <?php if ($status === 'SUBMITTED'): ?>
-          <button class="btn btn-primary btn-act" onclick="doAction('approve')"><i class="fas fa-check-circle"></i> ຢືນຢັນຂໍ້ມູນ → ອະນຸມັດ</button>
-        <?php elseif ($status === 'PENDING_APPROVAL'): ?>
+        <?php if ($status === 'PENDING_APPROVAL'): ?>
           <button class="btn btn-primary btn-act" onclick="doAction('approve')"><i class="fas fa-check-circle"></i> ອະນຸມັດ (Approve)</button>
         <?php elseif ($status === 'PENDING_PAYMENT'): ?>
           <button class="btn btn-success btn-act" onclick="doAction('pay')"><i class="fas fa-check-double"></i> ຢືນຢັນການຊຳລະ (Confirm Paid)</button>
@@ -386,13 +384,13 @@ require '../components/layout.php';
           </div>
           <button class="btn btn-success btn-act" onclick="doHandover()"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
         <?php endif; ?>
-        <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
+        <?php if (in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຕ້ອງປັບປຸງ (Request Change)</button>
         <?php endif; ?>
-        <?php if (in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED'], true)): ?>
+        <?php if (in_array($status, ['PENDING_APPROVAL','ISSUED'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
-        <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
+        <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
           <a class="btn btn-outline-secondary btn-act" target="_blank" href="preview_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-eye"></i> ສະແດງ (Preview)</a>
         <?php endif; ?>
         <?php if ($status === 'NEEDS_REVISION'): ?>

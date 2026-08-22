@@ -6,7 +6,7 @@ const props = defineProps({
 })
 
 const STATUS_META = {
-  SUBMITTED: { label: 'ສົ່ງຄຳຮ້ອງແລ້ວ', cls: 'bg-blue-100 text-blue-700' },
+  SUBMITTED: { label: 'ລໍຖ້າອະນຸມັດ', cls: 'bg-amber-100 text-amber-700' }, // legacy: merged into PENDING_APPROVAL
   PENDING_APPROVAL: { label: 'ລໍຖ້າອະນຸມັດ', cls: 'bg-amber-100 text-amber-700' },
   PENDING_PAYMENT: { label: 'ລໍຖ້າຊຳລະ', cls: 'bg-orange-100 text-orange-700' },
   PAID: { label: 'ຊຳລະແລ້ວ', cls: 'bg-teal-100 text-teal-700' },

@@ -31,10 +31,12 @@ $total = count($docs);
 // Show a friendly popup when a status filter is active but returned no records
 $showEmptyStatusAlert = ($statusFilter !== '' && empty($docs));
 
-// Status code -> display label (Lao / English). Order: draft, submitted, then the rest.
+// Status code -> display label (Lao / English). Order: draft, then the rest.
+// NOTE: SUBMITTED was merged into PENDING_APPROVAL (2026-08-22) — kept in the map only
+// so legacy rows/badges still render a Lao label; it is excluded from the filter dropdown.
 $status_labels = [
   'DRAFT'            => 'ຮ່າງ/draft',
-  'SUBMITTED'        => 'ຮັບແລ້ວ/submitted',
+  'SUBMITTED'        => 'ຮັບແລ້ວ/submitted (legacy)',
   'PENDING_APPROVAL' => 'ລໍຖ້າອະນຸມັດ/Pending Approval',
   'NEEDS_REVISION'   => 'ຕ້ອງການປັບປຸງ/Needs Revision',
   'ISSUED'           => 'ອະນຸມັດແລ້ວ/Issued',
@@ -105,6 +107,7 @@ require '../components/layout.php';
       <select id="statusFilter" class="form-select" style="min-width: 230px; width: auto; max-width: 320px;" onchange="filterStatus()">
         <option value="">ທຸກສະຖານະ</option>
         <?php foreach ($status_labels as $code => $label): ?>
+          <?php if ($code === 'SUBMITTED') continue; // merged into PENDING_APPROVAL ?>
           <option value="<?= $code ?>" <?= $statusFilter == $code ? 'selected' : '' ?>><?= $label ?></option>
         <?php endforeach; ?>
       </select>
@@ -139,7 +142,7 @@ require '../components/layout.php';
             <td class="text-center action-cell">
               <?php if (in_array($row['status'], ['DRAFT','NEEDS_REVISION'], true)): ?>
                 <button class="btn btn-warning btn-sm" onclick="location.href='request_doc.php?doc_id=<?= $row['id'] ?>&mode=draft'"><i class="fas fa-edit"></i> <?= $row['status'] === 'NEEDS_REVISION' ? 'ປັບປຸງ' : 'ແກ້ໄຂ' ?></button>
-              <?php elseif (in_array($row['status'], ['SUBMITTED','PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED'], true)): ?>
+              <?php elseif (in_array($row['status'], ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED'], true)): ?>
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
               <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
@@ -208,7 +211,7 @@ function openAddDoc() {
   clearDocForm();
   $('#doc_mode').val('submit');
   $('#modalDocTitle').html('ຄຳຮ້ອງໃໝ່');
-  $('#doc_status_hint').text('SUBMITTED');
+  $('#doc_status_hint').text('PENDING_APPROVAL');
   $('#submitDocBtn').text('ບັນທຶກຄຳຮ້ອງ');
   new bootstrap.Modal(document.getElementById('modalFormDoc')).show();
 }

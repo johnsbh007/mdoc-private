@@ -210,8 +210,8 @@ CREATE TABLE IF NOT EXISTS `edoc_document` (
   `village_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT 'Village of application (for roll-up stats)',
   `off_id`          VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
                     COMMENT 'Service office (FK ap_office.off_id)',
-  `status`          VARCHAR(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SUBMITTED'
-                    COMMENT 'Status: SUBMITTED/PENDING_APPROVAL/PENDING_PAYMENT/PAID/CANCELED',
+  `status`          VARCHAR(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING_APPROVAL'
+                    COMMENT 'Status: PENDING_APPROVAL/PENDING_PAYMENT/PAID/CANCELED (SUBMITTED merged into PENDING_APPROVAL 2026-08-22)',
   `amount`          DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Amount due for this application',
   `related_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT 'Related document (e.g. referral)',
   `is_active`       TINYINT(1) NOT NULL DEFAULT 1,

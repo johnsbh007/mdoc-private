@@ -109,10 +109,14 @@ Rule of thumb: any table starting with `edoc_` is ours; anything else in this da
         CANCELED (ຍົກເລີກ) at any stage with reason
 
 Status values (as implemented in eDoc UI):
-ຮ່າງ / DRAFT · ຮັບແລ້ວ / SUBMITTED · ລໍຖ້າອະນຸມັດ / PENDING_APPROVAL ·
+ຮ່າງ / DRAFT · ລໍຖ້າອະນຸມັດ / PENDING_APPROVAL ·
 ອະນຸມັດແລ້ວ / ISSUED · ລໍຖ້າຊໍາລະ / PENDING_PAYMENT · ຊໍາລະແລ້ວ / PAID ·
 ເຊັນແລ້ວ / SIGNED · ສົ່ງໃຫ້ແລ້ວ / HANDOVER · ດາວໂຫລດແລ້ວ / DOWNLOADED ·
 ປະຕິເສດ / REJECTED · ຍົກເລີກ / CANCELED
+
+NOTE (2026-08-22): SUBMITTED (ຮັບແລ້ວ) was merged into PENDING_APPROVAL per team decision —
+when the officer completes a draft and submits, it goes straight to the approval queue;
+no separate received/verify step. Legacy SUBMITTED rows were migrated to PENDING_APPROVAL.
 ```
 
 ### 4.1 Status bookkeeping

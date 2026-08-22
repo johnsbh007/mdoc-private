@@ -63,7 +63,7 @@ function fmtDate(s) {
         </div>
 
         <!-- Actions based on status -->
-        <div v-if="['PENDING_PAYMENT', 'SUBMITTED'].includes(doc.status)" class="mt-4">
+        <div v-if="['PENDING_PAYMENT', 'PENDING_APPROVAL'].includes(doc.status)" class="mt-4">
           <button
             @click="pay"
             class="w-full rounded-lg bg-teal-700 py-3 text-sm font-semibold text-white"
