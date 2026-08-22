@@ -127,8 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     WHERE id=?");
             $stmt->execute([$citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $doc_status, $doc_id]);
         } else {
-            $seq = $conn->query("SELECT COUNT(*)+1 FROM edoc_document WHERE DATE(created_at)=CURDATE()")->fetchColumn();
-            $doc_no = 'DOC-' . date('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+            // sequence from max existing suffix for today (COUNT-based numbering collides after same-day deletes)
+            $prefix = 'DOC-' . date('Ymd') . '-';
+            $seq = (int)$conn->query("SELECT COALESCE(MAX(CAST(SUBSTRING(doc_no, 14) AS UNSIGNED)), 0) + 1 FROM edoc_document WHERE doc_no LIKE " . $conn->quote($prefix . '%'))->fetchColumn();
+            $doc_no = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
             $submitted_at_sql = ($doc_status === 'PENDING_APPROVAL') ? 'NOW()' : 'NULL';
             $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, doc_item_id, village_id, off_id, status, amount, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,$submitted_at_sql)");
             $stmt->execute([$doc_no, $citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $created_by]);
@@ -181,8 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // invoice only for submitted records
         if ($doc_status === 'PENDING_APPROVAL') {
-            $seq = $conn->query("SELECT COUNT(*)+1 FROM edoc_document WHERE DATE(created_at)=CURDATE()")->fetchColumn();
-            $inv_no = 'INV-' . date('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+            // sequence from max existing suffix for today (COUNT-based numbering collides after same-day deletes)
+            $invPrefix = 'INV-' . date('Ymd') . '-';
+            $seq = (int)$conn->query("SELECT COALESCE(MAX(CAST(SUBSTRING(inv_no, 14) AS UNSIGNED)), 0) + 1 FROM edoc_invoice WHERE inv_no LIKE " . $conn->quote($invPrefix . '%'))->fetchColumn();
+            $inv_no = $invPrefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
             $invStmt = $conn->prepare("SELECT COUNT(*) FROM edoc_invoice WHERE doc_id=?");
             $invStmt->execute([$doc_id]);
             if ((int)$invStmt->fetchColumn() === 0) {
