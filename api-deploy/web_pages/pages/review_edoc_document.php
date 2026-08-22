@@ -172,6 +172,7 @@ require '../components/layout.php';
         <div><p class="lbl">ເລກທີເອກະສານ (Doc No)</p><p class="val"><?= htmlspecialchars($doc['doc_no']) ?></p></div>
         <div><p class="lbl">ປະເພດ (Type)</p><p class="val"><?= htmlspecialchars($doc['type_name']) ?> [<?= htmlspecialchars($doc['doc_type_code']) ?>]</p></div>
         <div><p class="lbl">ເອກະສານ (Item)</p><p class="val"><?= htmlspecialchars($doc['item_name']) ?> [<?= htmlspecialchars($doc['doc_item_code']) ?>]</p></div>
+        <div><p class="lbl">ແຫຼ່ງທີ່ມາ (Source)</p><p class="val"><?= ($doc['source'] ?? 'OFFICE') === 'MOBILE' ? 'ມືຖື (mDoc)' : 'ສຳນັກງານ (Office)' ?></p></div>
         <div><p class="lbl">ຄ່າທຳນຽມ (Fee)</p><p class="val"><?= number_format((float)($doc['amount'] ?: $doc['price']), 0) ?> ກີບ</p></div>
         <div><p class="lbl">ວັນທີສົ່ງ (Submitted)</p><p class="val"><?= fmtDate($doc['submitted_at'] ?: $doc['created_at']) ?></p></div>
         <?php if ($inv): ?>

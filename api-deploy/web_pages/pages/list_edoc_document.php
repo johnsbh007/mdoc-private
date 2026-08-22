@@ -69,6 +69,9 @@ require '../components/layout.php';
 #docTable tbody tr:hover { background-color: #e8f0fb; }
 #docTable tbody td { padding: 11px 14px; font-size: 0.88rem; color: #333; border: none !important; vertical-align: middle; }
 .st-badge { font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.src-badge { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.src-office { background:#e0e7ff; color:#3730a3; }
+.src-mobile { background:#fce7f3; color:#9d174d; }
 .st-SUBMITTED { background:#e0f2fe;color:#0369a1; } .st-DRAFT { background:#fde68a;color:#a16207; } .st-PENDING_APPROVAL { background:#fef9c3;color:#a16207; }
 .st-ISSUED { background:#ede9fe;color:#6d28d9; } .st-PENDING_PAYMENT { background:#ffedd5;color:#c2410c; }
 .st-PAID { background:#dcfce7;color:#15803d; } .st-SIGNED { background:#dbeafe;color:#1d4ed8; }
@@ -91,8 +94,10 @@ require '../components/layout.php';
       </h1>
       <div class="action-buttons-top mb-3 mt-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
-        <button class="btn btn-primary" onclick="location.href='select_doc_type.php'"><i class="fas fa-file-alt"></i> ສ້າງໃໝ່ (New Request)</button>
+        <button class="btn btn-primary" onclick="location.href='select_doc_type.php'"><i class="fas fa-file-alt"></i> ຄຳຮ້ອງໃໝ່ (ຮ່າງໂດຍພະນັກງານ)</button>
+        <?php /* walk-in direct-submit button hidden for now (team decision 2026-08-22) — officer drafts go via New Request; mobile submissions arrive via mDoc app
         <button class="btn btn-success" onclick="location.href='select_doc_type.php?mode=submit'"><i class="fas fa-plus"></i> ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)</button>
+        */ ?>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
     </div>
@@ -123,8 +128,9 @@ require '../components/layout.php';
             <th width="12%" class="text-center">ເລກທີ່</th>
             <th>ພົນລະເມືອງ</th>
             <th>ເອກະສານ</th>
-            <th width="12%" class="text-center">ຈຳນວນ (ກີບ)</th>
-            <th width="14%" class="text-center">ສະຖານະ</th>
+            <th width="8%" class="text-center">ແຫຼ່ງທີ່ມາ</th>
+            <th width="11%" class="text-center">ຈຳນວນ (ກີບ)</th>
+            <th width="13%" class="text-center">ສະຖານະ</th>
             <th width="9%" class="text-center">ວັນທີ</th>
             <th width="11%" class="text-center">ຈັດການ</th>
           </tr>
@@ -136,6 +142,13 @@ require '../components/layout.php';
             <td class="text-center"><span class="prov-code-badge"><?= htmlspecialchars($row['doc_no']) ?></span></td>
             <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?><br><small class="text-muted"><?= htmlspecialchars($row['village_name'] ?? '-') ?></small></td>
             <td><?= htmlspecialchars($row['item_name']) ?> <small class="text-muted">[<?= htmlspecialchars($row['doc_item_code']) ?>]</small></td>
+            <td class="text-center">
+              <?php if (($row['source'] ?? 'OFFICE') === 'MOBILE'): ?>
+                <span class="src-badge src-mobile" title="ຄຳຮ້ອງຈາກມືຖື (mDoc)"><i class="fas fa-mobile-alt"></i> ມືຖື</span>
+              <?php else: ?>
+                <span class="src-badge src-office" title="ຄຳຮ້ອງຈາກສຳນັກງານ"><i class="fas fa-building"></i> ສຳນັກງານ</span>
+              <?php endif; ?>
+            </td>
             <td class="text-center"><?= number_format((float)($row['eff_amount'] ?: 0), 2) ?></td>
             <td class="text-center"><span class="st-badge st-<?= $row['status'] ?>"><?= $status_labels[$row['status']] ?? $row['status'] ?></span></td>
             <td class="text-center"><small><?= date('d/m/Y', strtotime($row['created_at'])) ?></small></td>
