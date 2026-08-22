@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$existing) {
                 throw new RuntimeException('ບໍ່ພົບຮ່າງຄຳຮ້ອງ');
             }
-            if (!in_array($existing['status'], ['DRAFT', 'SUBMITTED', 'NEEDS_REVISION'], true)) {
+            if (!in_array($existing['status'], ['DRAFT', 'PENDING_APPROVAL', 'NEEDS_REVISION'], true)) {
                 throw new RuntimeException('ຮ່າງຄຳຮ້ອງນີ້ບໍ່ສາມາດແກ້ໄຂໄດ້');
             }
             $citizen_id = $citizen_id ?: (int)$existing['citizen_id'];
