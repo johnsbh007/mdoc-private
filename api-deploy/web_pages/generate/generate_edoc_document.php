@@ -250,9 +250,36 @@ if ($zip->open($tmp) !== true) { die('Cannot rewrite template'); }
 $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
-// ── stream as download ──────────────────────────────────────────────
+// ── stream as download, or store to edoc_file_store (save=1) ───────
 $fname = 'ໃບຢັ້ງຢືນທີ່ຢູ່_' . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = 'residence_cert_' . ($row['doc_no'] ?? $doc_id) . '.docx';
+
+$save = (int)($_GET['save'] ?? 0);
+if ($save === 1) {
+    // Store the issued document under files/issued/, record it in edoc_file_store
+    $dir = dirname(__DIR__, 2) . '/files/issued';
+    if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+    $relDir  = 'files/issued';
+    $stored  = $relDir . '/' . $ascii;
+    $absDest = dirname(__DIR__, 2) . '/' . $stored;
+    if (!copy($tmp, $absDest)) { http_response_code(500); die('Could not store issued document'); }
+    @chmod($absDest, 0664);
+
+    // next version number for this doc
+    $v = $conn->prepare("SELECT COALESCE(MAX(version),0)+1 FROM edoc_file_store WHERE doc_id=?");
+    $v->execute([$doc_id]);
+    $version = (int)$v->fetchColumn();
+
+    $ins = $conn->prepare("INSERT INTO edoc_file_store (doc_id, file_path, signed_by, version) VALUES (?,?,?,?)");
+    $ins->execute([$doc_id, $stored, ($row['approved_by'] ?? null) ?: null, $version]);
+
+    // JSON response so the list can react
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status'=>'success','message'=>'ເອກະສານຖືກສ້າງ ແລະ ບັນທຶກແລ້ວ (v'.$version.')','file'=>$stored,'version'=>$version]);
+    unlink($tmp);
+    exit;
+}
+
 header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($fname));
 header('Content-Length: ' . filesize($tmp));

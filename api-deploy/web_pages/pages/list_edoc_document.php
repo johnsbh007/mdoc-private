@@ -16,7 +16,8 @@ if ($statusFilter) { $where = "WHERE d.status = ?"; $params[] = $statusFilter; }
 $sql = "SELECT d.*, di.name_lo AS item_name, di.doc_item_code, di.doc_type_id, c.first_name, c.last_name,
                v.name_lo AS village_name, t.name_lo AS taseng_name,
                COALESCE(NULLIF(d.amount,0), di.price) AS eff_amount,
-               (SELECT status FROM edoc_document_status WHERE doc_id = d.id ORDER BY id DESC LIMIT 1) AS last_status
+               (SELECT status FROM edoc_document_status WHERE doc_id = d.id ORDER BY id DESC LIMIT 1) AS last_status,
+               EXISTS(SELECT 1 FROM edoc_file_store fs WHERE fs.doc_id = d.id) AS has_issued
         FROM edoc_document d
         JOIN edoc_doc_item di ON d.doc_item_id = di.id
         JOIN edoc_citizen c ON d.citizen_id = c.id
@@ -159,7 +160,11 @@ require '../components/layout.php';
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
               <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
-                <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-word"></i> ໃບຢັ້ງຢືນ</a>
+                <?php if ($row['has_issued']): ?>
+                  <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/download_issued.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-download"></i> ດາວໂຫລດ</a>
+                <?php else: ?>
+                  <a class="btn btn-outline-success btn-sm" href="javascript:void(0)" onclick="storeIssuedDoc(<?= (int)$row['id'] ?>, this)"><i class="fas fa-file-word"></i> ສ້າງເອກະສານ</a>
+                <?php endif; ?>
               <?php endif; ?>
               <?php // TODO(roles): gate this delete button with a user-capability check (not everyone may delete) ?>
               <button type="button" class="btn btn-danger btn-sm ms-1" onclick="confirmDeleteDoc(<?= (int)$row['id'] ?>, <?= htmlspecialchars(json_encode($row['doc_no']), ENT_QUOTES, 'UTF-8') ?>)"><i class="fas fa-trash"></i></button>
@@ -200,6 +205,23 @@ $(document).ready(function() {
     <?php endif; ?>
 });
 function filterStatus() { var s = $('#statusFilter').val(); window.location.href = 'list_edoc_document.php' + (s ? '?status=' + s : ''); }
+
+// Generate + store the issued document, then refresh so the row shows the ດາວໂຫລດ button
+function storeIssuedDoc(docId, btn) {
+  if (btn) { btn.disabled = true; }
+  Swal.fire({ title: 'ກຳລັງສ້າງເອກະສານ...', text: 'ກະລຸນາລໍຖ້າ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  $.get('../generate/generate_edoc_document.php?doc_id=' + docId + '&save=1', function(r) {
+    if (r && r.status === 'success') {
+      Swal.fire({ title: 'ສຳເລັດ!', text: r.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
+    } else {
+      Swal.fire('ຜິດພາດ', (r && r.message) || 'ບໍ່ສາມາດສ້າງເອກະສານໄດ້', 'error');
+      if (btn) { btn.disabled = false; }
+    }
+  }).fail(function() {
+    Swal.fire('ຜິດພາດ', 'ເຊື່ອມຕໍ່ບໍ່ໄດ້!', 'error');
+    if (btn) { btn.disabled = false; }
+  });
+}
 
 function clearDocForm() {
   $('#formDoc')[0].reset();
