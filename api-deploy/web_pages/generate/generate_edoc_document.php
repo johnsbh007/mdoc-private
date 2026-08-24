@@ -3,6 +3,9 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
+// Generating the issued document is a deliverable/write action — gate on sign capability
+edoc_require_cap('can_sign', 'ສ້າງ/ດາວໂຫລດເອກະສານ');
 
 $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }

@@ -3,6 +3,8 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
+if (!edoc_can_create()) { die('ທ່ານບໍ່ມີສິດສ້າງຄຳຮ້ອງ / No permission'); }
 $pageTitle = "ເລືອກປະເພດເອກະສານ - New Request";
 $_current = 'select_doc_type.php';
 // mode: 'draft' (normal New Request) or 'submit' (walk-in citizen request) -> request_doc only submits

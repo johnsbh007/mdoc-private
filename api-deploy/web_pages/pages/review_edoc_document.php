@@ -3,6 +3,7 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
 
 $_current = 'review_edoc_document.php';
 $doc_id = (int)($_GET['doc_id'] ?? 0);
@@ -362,13 +363,20 @@ require '../components/layout.php';
       </div>
       <div class="d-flex gap-2 flex-wrap">
         <?php if ($status === 'PENDING_APPROVAL'): ?>
+          <?php if (edoc_can_approve()): ?>
           <button class="btn btn-primary btn-act" onclick="doAction('approve')"><i class="fas fa-check-circle"></i> ອະນຸມັດ (Approve)</button>
+          <?php endif; ?>
         <?php elseif ($status === 'PENDING_PAYMENT'): ?>
+          <?php if (edoc_can_pay()): ?>
           <button class="btn btn-success btn-act" onclick="doAction('pay')"><i class="fas fa-check-double"></i> ຢືນຢັນການຊຳລະ (Confirm Paid)</button>
           <button class="btn btn-danger btn-act" onclick="doAction('reject_payment')"><i class="fas fa-times-circle"></i> ປະຕິເສດສະລິບ (Reject Slip)</button>
+          <?php endif; ?>
         <?php elseif ($status === 'PAID'): ?>
+          <?php if (edoc_can_sign()): ?>
           <button class="btn btn-success btn-act" onclick="doAction('sign')"><i class="fas fa-signature"></i> ເຊັນແລ້ວ (Signed)</button>
+          <?php endif; ?>
         <?php elseif ($status === 'SIGNED'): ?>
+          <?php if (edoc_can_issue()): ?>
           <div class="w-100 mb-2">
             <label class="form-label small mb-1"><i class="fas fa-user-check"></i> ຂໍ້ມູນຜູ້ຮັບເອກະສານ (Recipient info) — ບັນທຶກກ່ອນສົ່ງມອບ</label>
             <div class="row g-2">
@@ -384,11 +392,12 @@ require '../components/layout.php';
             </div>
           </div>
           <button class="btn btn-success btn-act" onclick="doHandover()"><i class="fas fa-hand-holding"></i> ສົ່ງມອບ (Handover)</button>
+          <?php endif; ?>
         <?php endif; ?>
-        <?php if (in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
+        <?php if (edoc_can_approve() && in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT'], true)): ?>
           <button class="btn btn-warning btn-act" onclick="doAction('revision')"><i class="fas fa-undo-alt"></i> ຕ້ອງປັບປຸງ (Request Change)</button>
         <?php endif; ?>
-        <?php if (in_array($status, ['PENDING_APPROVAL','ISSUED'], true)): ?>
+        <?php if (edoc_can_approve() && in_array($status, ['PENDING_APPROVAL','ISSUED'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
         <?php if ($doc['doc_type_id'] == 1 && in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>

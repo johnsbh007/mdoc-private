@@ -3,6 +3,7 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require '../connect.php';
+require_once '../edoc_auth.php';
 
 $_current = 'list_edoc_document.php';
 $alert = $_SESSION['alert'] ?? null;
@@ -95,7 +96,9 @@ require '../components/layout.php';
       </h1>
       <div class="action-buttons-top mb-3 mt-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
+        <?php if (edoc_can_create()): ?>
         <button class="btn btn-primary" onclick="location.href='select_doc_type.php'"><i class="fas fa-file-alt"></i> ຄຳຮ້ອງໃໝ່ (ຮ່າງໂດຍພະນັກງານ)</button>
+        <?php endif; ?>
         <?php /* walk-in direct-submit button hidden for now (team decision 2026-08-22) — officer drafts go via New Request; mobile submissions arrive via mDoc app
         <button class="btn btn-success" onclick="location.href='select_doc_type.php?mode=submit'"><i class="fas fa-plus"></i> ຄຳຮ້ອງໃໝ່ (ພົນລະເມືອງຂໍມາ)</button>
         */ ?>
@@ -167,7 +170,9 @@ require '../components/layout.php';
                 <?php endif; ?>
               <?php endif; ?>
               <?php // TODO(roles): gate this delete button with a user-capability check (not everyone may delete) ?>
+              <?php if (edoc_can_delete()): ?>
               <button type="button" class="btn btn-danger btn-sm ms-1" onclick="confirmDeleteDoc(<?= (int)$row['id'] ?>, <?= htmlspecialchars(json_encode($row['doc_no']), ENT_QUOTES, 'UTF-8') ?>)"><i class="fas fa-trash"></i></button>
+              <?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>

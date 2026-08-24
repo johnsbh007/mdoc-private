@@ -3,6 +3,8 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
+if (!edoc_can_create()) { die('ທ່ານບໍ່ມີສິດສ້າງແກ້ໄຂຄຳຮ້ອງ / No permission'); }
 $pageTitle = "ຄຳຮ້ອງໃໝ່ - New Request";
 $_current = 'request_doc.php';
 include '../components/layout.php';

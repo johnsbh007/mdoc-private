@@ -3,6 +3,8 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
+edoc_require_cap('can_create', 'ສ້າງ/ແກ້ໄຂຄຳຮ້ອງ');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $doc_id      = !empty($_POST['id']) ? (int)$_POST['id'] : 0;

@@ -13,6 +13,22 @@ $off_id = $_SESSION['off_id'] ?? '00';
 
 if (empty($id) || empty($action)) { echo json_encode(['status'=>'error','message'=>'Missing params']); exit; }
 
+// ── capability gate (role-based) ─────────────────────────────────────
+require_once '../../edoc_auth.php';
+$_SESSION['off_id'] = $_SESSION['off_id'] ?? '00';
+$capByAction = [
+    'approve'        => 'can_approve',
+    'reject'         => 'can_approve',
+    'revision'       => 'can_approve',
+    'reject_payment' => 'can_pay',
+    'pay'            => 'can_pay',
+    'sign'           => 'can_sign',
+    'issue'          => 'can_issue',
+];
+if (isset($capByAction[$action])) {
+    edoc_require_cap($capByAction[$action], $action);
+}
+
 try {
     $conn->beginTransaction();
     $stmt = $conn->prepare("SELECT * FROM edoc_document WHERE id = ? FOR UPDATE");
