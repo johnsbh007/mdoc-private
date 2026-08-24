@@ -92,7 +92,7 @@ Rule of thumb: any table starting with `edoc_` is ours; anything else in this da
                  (status set via ເຊັນແລ້ວ button on review page, no data entry)
                  │
                  ▼
-            HANDOVER (ສົ່ງໃຫ້ແລ້ວ) — document handed to citizen;
+            HANDOVER (ສົ່ງມອບແລ້ວ) — document handed to citizen;
                  recipient name + national ID + date recorded in
                  edoc_document_handover (officer enters via ສົ່ງມອບ form on review page)
                  │
@@ -111,7 +111,7 @@ Rule of thumb: any table starting with `edoc_` is ours; anything else in this da
 Status values (as implemented in eDoc UI):
 ຮ່າງ / DRAFT · ລໍຖ້າອະນຸມັດ / PENDING_APPROVAL ·
 ອະນຸມັດແລ້ວ / ISSUED · ລໍຖ້າຊໍາລະ / PENDING_PAYMENT · ຊໍາລະແລ້ວ / PAID ·
-ເຊັນແລ້ວ / SIGNED · ສົ່ງໃຫ້ແລ້ວ / HANDOVER · ດາວໂຫລດແລ້ວ / DOWNLOADED ·
+ເຊັນແລ້ວ / SIGNED · ສົ່ງມອບແລ້ວ / HANDOVER · ດາວໂຫລດແລ້ວ / DOWNLOADED ·
 ປະຕິເສດ / REJECTED · ຍົກເລີກ / CANCELED
 
 NOTE (2026-08-22): SUBMITTED (ຮັບແລ້ວ) was merged into PENDING_APPROVAL per team decision —
