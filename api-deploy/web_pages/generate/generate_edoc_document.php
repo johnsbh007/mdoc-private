@@ -257,11 +257,13 @@ $ascii = 'residence_cert_' . ($row['doc_no'] ?? $doc_id) . '.docx';
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
     // Store the issued document under files/issued/, record it in edoc_file_store
-    $dir = dirname(__DIR__, 2) . '/files/issued';
+    // NOTE: this file lives at /edoc/generate/, so the app root is dirname(__DIR__)
+    $appRoot = dirname(__DIR__);
+    $dir = $appRoot . '/files/issued';
     if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
     $relDir  = 'files/issued';
     $stored  = $relDir . '/' . $ascii;
-    $absDest = dirname(__DIR__, 2) . '/' . $stored;
+    $absDest = $appRoot . '/' . $stored;
     if (!copy($tmp, $absDest)) { http_response_code(500); die('Could not store issued document'); }
     @chmod($absDest, 0664);
 

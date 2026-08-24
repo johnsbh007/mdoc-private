@@ -17,7 +17,7 @@ $st->execute([$doc_id]);
 $f = $st->fetch(PDO::FETCH_ASSOC);
 if (!$f) { die('No issued document stored for this request yet.'); }
 
-$abs = dirname(__DIR__, 2) . '/' . $f['file_path'];
+$abs = dirname(__DIR__) . '/' . $f['file_path'];
 if (!file_exists($abs)) { die('Stored file is missing on disk.'); }
 
 // log the download
