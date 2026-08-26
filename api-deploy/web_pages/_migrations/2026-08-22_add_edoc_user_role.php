@@ -62,6 +62,11 @@ foreach ($accounts as [$username, $fullname, $role]) {
                    VALUES (?, ?, NULL, 1)
                    ON DUPLICATE KEY UPDATE role = VALUES(role)")->execute([$uid, $role]);
     echo "  role row for [$username] -> $role (user_id=$uid)\n";
+    // grant wildcard office access (00) so the shared login's office gate passes;
+    // additive rows in ap_user_departments for the NEW accounts only.
+    $pdo->prepare("INSERT IGNORE INTO ap_user_departments (user_id, off_id) VALUES (?, '00')")
+        ->execute([$uid]);
+    echo "  office access (00) for [$username]\n";
 }
 
 echo "\n=== done ===\n";
