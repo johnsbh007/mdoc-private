@@ -162,7 +162,7 @@ require '../components/layout.php';
               <?php elseif (in_array($row['status'], ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','PAID','SIGNED'], true)): ?>
                 <a class="btn btn-primary btn-sm" href="review_edoc_document.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-tasks"></i> ຈັດການ</a>
               <?php endif; ?>
-              <?php if ($row['doc_type_id'] == 1 && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
+              <?php if (in_array($row['doc_type_id'], [1, 12], true) && in_array($row['status'], ['PAID','SIGNED','HANDOVER','DOWNLOADED'], true)): ?>
                 <?php if ($row['has_issued']): ?>
                   <a class="btn btn-outline-success btn-sm" target="_blank" href="../generate/download_issued.php?doc_id=<?= $row['id'] ?>"><i class="fas fa-file-download"></i> ດາວໂຫລດ</a>
                 <?php else: ?>

@@ -30,6 +30,15 @@ $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);
 $res = $rs->fetch(PDO::FETCH_ASSOC);
 
+// ── generic EAV field values (edoc_form_data joined to field names) ──
+$eav = [];
+$ev = $conn->prepare("SELECT f.field_name, fd.field_value
+                      FROM edoc_form_data fd
+                      JOIN edoc_doc_field f ON f.id = fd.field_id
+                      WHERE fd.doc_id = ?");
+$ev->execute([$doc_id]);
+foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { $eav[$r['field_name']] = $r['field_value']; }
+
 // ── resolve lookup codes → Lao names (save code, show name) ─────────
 function resolveName($conn, $table, $code) {
   if ($code === '' || $code === null) return '';
@@ -79,8 +88,10 @@ function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
 $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ? 'ນາງ' : '');
 $today = date('d/m/Y');
 
-// ── open template copy ───────────────────────────────────────────────
-$template = '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx';
+// ── open template copy (choose by doc type) ─────────────────────────
+$template = ($row['doc_type_id'] == 12)
+    ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
+    : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx';
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -185,23 +196,93 @@ function fillNameLine($p, $titleFirst, $surname) {
 
 // Title for the name line: keep the original "ທ້າວ ຫຼື ນາງ" wording if gender unknown.
 $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
-// ops per paragraph (matched by unique anchor substring, in document order)
-$opsByAnchor = [
-  '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
-  'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
-  // Name line: put title+first_name in ONE phrase replacement.
-  'ທ້າວ ຫຼື ນາງ' => [['name', trim($nameTitle . ' ' . $row['first_name']), $row['last_name']]],
-  'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ຕາແສງ', $birthTasengName], ['dots', 'ເມືອງ', $birthDistrictName]],
-  'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
-  'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $row['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $row['district_name'] ?? ''], ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
-  'ສໍາມະໂນຄົວ' => [['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $res['household_book_no'] ?? ''], ['dots', 'ລົງວັນທີ', fmtDate($res['household_book_date'] ?? '')]],
-  'ເບີໂທລະສັບ' => [['dots', 'ເບີໂທລະສັບ', $row['phone']], ['dots', 'ເປັນລູກຂອງທ້າວ', $res['father_name'] ?? '']],
-  'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ໜ່ວຍ', $parentUnit], ['dots', 'ຕາແສງ', $parentTaseng], ['dots', 'ບ້ານ', $parentVillage]],
-  // Parent address is split across two paragraphs: village/taseng (above) and ເມືອງ/ແຂວງ (the
-  // following paragraph). Anchor the district/province fill on the ແຂວງ label so it lands in the
-  // correct paragraph; otherwise those dots stay unfilled.
-  'ແຂວງ' => [['dots', 'ເມືອງ', $parentDistrict], ['dots', 'ແຂວງ', $parentProvince]],
-];
+
+// ── ops per doc type ────────────────────────────────────────────────
+// Type 12 = ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase letter). The applicant is the
+// SELLER (citizen record); witnesses/land/borders/buyer come from the EAV fields.
+$opsByAnchor = [];
+if ((int)$row['doc_type_id'] === 12) {
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $opsByAnchor = [
+        '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
+        'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
+        // line 8-10: three witnesses — each line starts with "1.ທ່ານ…" / "2.ທ່ານ…" / "3.ທ່ານ…"
+        '1.ທ່ານ' => [
+            ['dots', 'ທ່ານ', $eavGet('witness1_name')],
+            ['dots', 'ອາຍຸ', $eavGet('witness1_age')],
+            ['dots', 'ອາຊີບ', $eavGet('witness1_occupation')],
+            ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('witness1_village')],
+        ],
+        '2.ທ່ານ' => [
+            ['dots', 'ທ່ານ', $eavGet('witness2_name')],
+            ['dots', 'ອາຍຸ', $eavGet('witness2_age')],
+            ['dots', 'ອາຊີບ', $eavGet('witness2_occupation')],
+            ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('witness2_village')],
+        ],
+        '3.ທ່ານ' => [
+            ['dots', 'ທ່ານ', $eavGet('witness3_name')],
+            ['dots', 'ອາຍຸ', $eavGet('witness3_age')],
+            ['dots', 'ອາຊີບ', $eavGet('witness3_occupation')],
+            ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('witness3_village')],
+        ],
+        // seller = applicant (citizen)
+        'ຂ້າພະເຈົ້າ' => [
+            ['phrase', 'ທ້າວ/ນາງ', $nameTitle],
+            ['dots', 'ອາຍຸ', $row['age'] ?? ($row['dob'] ? floor((time()-strtotime($row['dob']))/31536000) : '')],
+            ['dots', 'ສັນຊາດ', $nationalityName],
+            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['unit_no']],
+            ['dots', 'ບ້ານ', $row['village_name']],
+            ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+            ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+            ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('seller_family_book')],
+            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
+            ['dots', 'ເບີໂທ', $row['phone']],
+        ],
+        // land
+        'ໄດ້ເຫັນດີຕົກລົງຂາຍ' => [
+            ['dots', 'ຈໍານວນ', $eavGet('land_plots')],
+            ['dots', 'ເປັນຈໍານວນເງິນ', number_format((float)$eavGet('land_amount'))],
+            ['dots', 'ເຊິ່ງມີເນື້ອທີ່', $eavGet('land_area')],
+        ],
+        // borders (4 lines, each with neighbor + meters)
+        'ທິດເໜືອ' => [['dots', 'ທິດເໜືອ ຕິດກັບ', $eavGet('border_north_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_north_meters')]],
+        'ທິດໃຕ້' => [['dots', 'ທິດໃຕ້ ຕິດກັບ', $eavGet('border_south_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_south_meters')]],
+        'ທິດຕາເວັນອອກ' => [['dots', 'ທິດຕາເວັນອອກ ຕິດກັບ', $eavGet('border_east_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_east_meters')]],
+        'ທິດຕາເວັນຕົກ' => [['dots', 'ທິດຕາເວັນຕົກ ຕິດກັບ', $eavGet('border_west_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_west_meters')]],
+        // buyer
+        'ຂາຍໃຫ້ແກ່' => [
+            ['dots', 'ຂາຍໃຫ້ແກ່ທ້າວ/ນາງ', $eavGet('buyer_name')],
+            ['dots', 'ອາຍຸ', $eavGet('buyer_age')],
+            ['dots', 'ສັນຊາດ', $eavGet('buyer_nationality')],
+            ['dots', 'ຊົນເຜົ່າ', $eavGet('buyer_ethnicity')],
+            ['dots', 'ສາສະໜາ', $eavGet('buyer_religion')],
+            ['dots', 'ອາຊີບ', $eavGet('buyer_occupation')],
+            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $eavGet('buyer_unit')],
+            ['dots', 'ບ້ານ', $eavGet('buyer_village')],
+            ['dots', 'ເມືອງ', $eavGet('buyer_district')],
+            ['dots', 'ແຂວງ', $eavGet('buyer_province')],
+            ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('buyer_family_book')],
+            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $eavGet('buyer_id_card')],
+            ['dots', 'ເບີໂທ', $eavGet('buyer_phone')],
+        ],
+        // final ownership statement (buyer name again)
+        'ເປັນເຈົ້າຂອງ' => [['dots', 'ທ້າວ/ນາງ', $eavGet('buyer_name')]],
+    ];
+} else {
+    // residence (type 1) — original fill table
+    $opsByAnchor = [
+        '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
+        'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
+        'ທ້າວ ຫຼື ນາງ' => [['name', trim($nameTitle . ' ' . $row['first_name']), $row['last_name']]],
+        'ວັນ,ເດືອນ,ປີເກີດ' => [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])], ['dots', 'ບ້ານເກີດ', $birthVillageName], ['dots', 'ຕາແສງ', $birthTasengName], ['dots', 'ເມືອງ', $birthDistrictName]],
+        'ເຊື້ອຊາດ' => [['dots', 'ແຂວງ', $birthProvinceName], ['dots', 'ເຊື້ອຊາດ', $originName], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ສາສະໜາ', $religionName], ['dots', 'ຊົນເຜົ່າ', $ethnicityName], ['dots', 'ອາຊີບ', $occupationName], ['dots', 'ບັດປະຈໍາຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])]],
+        'ເຮືອນເລກທີ' => [['dots', 'ເຮືອນເລກທີ', $row['house_no']], ['dots', 'ໜ່ວຍທີ', $row['unit_no']], ['dots', 'ຕາແສງ', $row['taseng_name'] ?? ''], ['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $row['district_name'] ?? ''], ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
+        'ສໍາມະໂນຄົວ' => [['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $res['household_book_no'] ?? ''], ['dots', 'ລົງວັນທີ', fmtDate($res['household_book_date'] ?? '')]],
+        'ເບີໂທລະສັບ' => [['dots', 'ເບີໂທລະສັບ', $row['phone']], ['dots', 'ເປັນລູກຂອງທ້າວ', $res['father_name'] ?? '']],
+        'ແລະ ນາງ' => [['dots', 'ແລະ ນາງ', $res['mother_name'] ?? ''], ['dots', 'ໜ່ວຍ', $parentUnit], ['dots', 'ຕາແສງ', $parentTaseng], ['dots', 'ບ້ານ', $parentVillage]],
+        'ແຂວງ' => [['dots', 'ເມືອງ', $parentDistrict], ['dots', 'ແຂວງ', $parentProvince]],
+    ];
+}
 
 $paras = $dom->getElementsByTagNameNS($ns, 'p');
 foreach ($paras as $p) {
@@ -254,8 +335,8 @@ $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
-$fname = 'ໃບຢັ້ງຢືນທີ່ຢູ່_' . ($row['doc_no'] ?? $doc_id) . '.docx';
-$ascii = 'residence_cert_' . ($row['doc_no'] ?? $doc_id) . '.docx';
+$fname = (($row['doc_type_id'] == 12) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_') . ($row['doc_no'] ?? $doc_id) . '.docx';
+$ascii = (($row['doc_type_id'] == 12) ? 'land_sale_' : 'residence_cert_') . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
