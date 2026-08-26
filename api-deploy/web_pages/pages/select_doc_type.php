@@ -89,6 +89,7 @@ foreach ($items as $it) { $itemsByType[$it['doc_type_id']][] = $it; }
 const ITEMS_BY_TYPE = <?= json_encode($itemsByType, JSON_UNESCAPED_UNICODE) ?>;
 const TYPES = <?= json_encode(array_column($types, 'name_lo', 'id'), JSON_UNESCAPED_UNICODE) ?>;
 const MODE = <?= json_encode($mode, JSON_UNESCAPED_UNICODE) ?>;
+const IMPLEMENTED = <?= json_encode(array_combine(array_column($items, 'id'), array_map('edoc_item_implemented', array_column($items, 'id'))), JSON_UNESCAPED_UNICODE) ?>;
 
 function chooseType(typeId) {
   const list = ITEMS_BY_TYPE[typeId];
@@ -99,11 +100,15 @@ function chooseType(typeId) {
   document.getElementById('selTypeName').textContent = TYPES[typeId] || '';
   let h = '';
   list.forEach(function(it){
+    const ready = !!IMPLEMENTED[it.id];
     h += '<div class="col-md-4">'
-       +   '<div class="card h-100 border item-card" style="cursor:pointer" '
+       +   '<div class="card h-100 border item-card" style="cursor:pointer;' + (ready ? '' : 'opacity:.75;border-left-color:#94a3b8;') + '" '
        +   'onclick="chooseItem(' + it.doc_type_id + ',' + it.id + ')">'
        +     '<div class="card-body">'
        +       '<span class="badge bg-secondary mb-2">[' + escapeHtml(it.doc_item_code) + ']</span>'
+       +       (ready
+         ? '<span class="badge bg-success ms-1 mb-2">ພ້ອມໃຊ້ / Ready</span>'
+         : '<span class="badge bg-secondary ms-1 mb-2">ກຳລັງພັດທະນາ / Under construction</span>')
        +       '<h6 class="card-title mb-1">' + escapeHtml(it.name_lo) + '</h6>'
        +       '<small class="text-muted">' + escapeHtml(it.name_en || '') + '</small>'
        +     '</div>'
@@ -117,6 +122,12 @@ function chooseType(typeId) {
 }
 
 function chooseItem(typeId, itemId) {
+  if (!IMPLEMENTED[itemId]) {
+    Swal.fire({ icon: 'warning', title: 'ກຳລັງພັດທະນາ / Under construction',
+      text: 'ເອກະສານລາຍການນີ້ຍັງບໍ່ທັນພ້ອມໃຊ້ງານ — ກະລຸນາລໍຖ້າ. (This document form is not ready yet.)',
+      confirmButtonColor: '#044482' });
+    return;
+  }
   window.location.href = 'request_doc.php?doc_type_id=' + typeId + '&doc_item_id=' + itemId + '&mode=' + encodeURIComponent(MODE);
 }
 

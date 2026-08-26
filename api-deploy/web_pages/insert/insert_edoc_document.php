@@ -8,8 +8,15 @@ edoc_require_cap('can_create', 'ສ້າງ/ແກ້ໄຂຄຳຮ້ອງ')
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $doc_id      = !empty($_POST['id']) ? (int)$_POST['id'] : 0;
-    $citizen_id  = !empty($_POST['citizen_id']) ? (int)$_POST['citizen_id'] : 0;
-    $doc_item_id = !empty($_POST['doc_item_id']) ? (int)$_POST['doc_item_id'] : 0;
+        $citizen_id  = !empty($_POST['citizen_id']) ? (int)$_POST['citizen_id'] : 0;
+        $doc_item_id = !empty($_POST['doc_item_id']) ? (int)$_POST['doc_item_id'] : 0;
+
+        // hard gate: refuse inserts for document items without a real template yet
+        if (!edoc_item_implemented($doc_item_id)) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['status' => 'error', 'message' => 'ລາຍການເອກະສານນີ້ຍັງບໍ່ທັນພ້ອມໃຊ້ງານ (ກຳລັງພັດທະນາ) / This document item is under construction and cannot be submitted']);
+            exit;
+        }
     $village_id  = !empty($_POST['village_id']) ? (int)$_POST['village_id'] : null;
     $amount      = (float)($_POST['amount'] ?? 0);
     $remark      = trim($_POST['remark'] ?? '');

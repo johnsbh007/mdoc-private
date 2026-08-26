@@ -81,6 +81,16 @@ if (!$editData) {
 // mode: 'draft' = normal New Request (allow save-as-draft), 'submit' = walk-in citizen request (submit only, becomes PENDING_APPROVAL)
 $mode = in_array(($_GET['mode'] ?? ''), ['draft','submit']) ? $_GET['mode'] : 'draft';
 $isSubmit = ($mode === 'submit');
+
+// ── hard gate: only implemented items may be opened for entry ──
+// (SSR mirror of select_doc_type.php; blocks direct URL access to unfinished styles)
+if (!$item || !edoc_item_implemented($item['id'])) {
+    echo '<div class="content-wrapper p-3"><div class="alert alert-warning">'
+       . 'ລາຍການເອກະສານນີ້ຍັງບໍ່ທັນພ້ອມໃຊ້ງານ (ກຳລັງພັດທະນາ) / This document form is under construction. '
+       . '<a href="select_doc_type.php">ເລືອກລາຍການອື່ນ</a></div></div>';
+    include '../components/layout_footer.php';
+    exit;
+}
 $provinces = $conn->query("SELECT id, name_lo FROM edoc_province ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 
 // lookup tables for basic person data (save code, show name)
