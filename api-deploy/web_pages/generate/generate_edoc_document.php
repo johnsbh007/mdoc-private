@@ -11,11 +11,12 @@ $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load doc + citizen + residence data ──────────────────────────────
-$d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name,
+$d = $conn->prepare("SELECT d.*, c.*, di.doc_type_id, v.name_lo AS village_name,
                             f.name_lo AS taseng_name, g.name_lo AS district_name,
                             h.name_lo AS province_name
                      FROM edoc_document d
                      JOIN edoc_citizen c ON d.citizen_id = c.id
+                     JOIN edoc_doc_item di ON d.doc_item_id = di.id
                      LEFT JOIN edoc_village v ON c.village_id = v.id
                      LEFT JOIN edoc_taseng f ON c.taseng_id = f.id
                      LEFT JOIN edoc_district g ON c.district_id = g.id
