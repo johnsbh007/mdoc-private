@@ -6,6 +6,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 require '../connect.php';
+require_once '../edoc_auth.php';
+if (!edoc_can_basic_data()) { die('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນພື້ນຖານ / No access'); }
 
 $_current = 'list_edoc_province.php';
 $alert = $_SESSION['alert'] ?? null;

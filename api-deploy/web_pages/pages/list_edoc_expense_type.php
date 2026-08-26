@@ -3,6 +3,8 @@ session_name('ACCOUNT_SATHA_SESS');
 session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require '../connect.php';
+require_once '../edoc_auth.php';
+if (!edoc_can_basic_data()) { die('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນພື້ນຖານ / No access'); }
 
 $_current = 'list_edoc_expense_type.php';
 $alert = $_SESSION['alert'] ?? null;

@@ -26,6 +26,8 @@ function edoc_can_pay()     { return edoc_can('can_pay'); }
 function edoc_can_sign()    { return edoc_can('can_sign'); }
 function edoc_can_issue()   { return edoc_can('can_issue'); }
 function edoc_can_delete()  { return edoc_can('can_delete'); }
+function edoc_can_basic_data()   { return edoc_can('can_basic_data'); }
+function edoc_can_manage_users() { return edoc_can('can_manage_users'); }
 
 /**
  * Require a capability for an AJAX action; on failure emit a JSON error and exit.
