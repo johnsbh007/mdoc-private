@@ -205,9 +205,9 @@ $opsByAnchor = [];
 if ((int)$row['doc_type_id'] === 12) {
     $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
     $opsByAnchor = [
-        '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
-        'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
-        // line 8-10: three witnesses — each line starts with "1.ທ່ານ…" / "2.ທ່ານ…" / "3.ທ່ານ…"
+            '/ຄປຕ' => [['dots', 'ເລກທີ່', $row['doc_no']]],
+            'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
+            // line 8-10: three witnesses — each line starts with "1.ທ່ານ…" / "2.ທ່ານ…" / "3.ທ່ານ…"
         '1.ທ່ານ' => [
             ['dots', 'ທ່ານ', $eavGet('witness1_name')],
             ['dots', 'ອາຍຸ', $eavGet('witness1_age')],
