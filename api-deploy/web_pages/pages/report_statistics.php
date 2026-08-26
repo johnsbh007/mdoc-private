@@ -153,3 +153,4 @@ require '../components/layout.php';
     <?php endif; ?>
   </div>
 </div>
+<?php require '../components/layout_footer.php'; ?>

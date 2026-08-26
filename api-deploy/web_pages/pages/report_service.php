@@ -127,3 +127,4 @@ require '../components/layout.php';
     </table>
   </div>
 </div>
+<?php require '../components/layout_footer.php'; ?>
