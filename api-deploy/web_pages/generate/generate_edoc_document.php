@@ -173,11 +173,11 @@ function replacePhrase($p, $OLD, $NEW) {
 }
 // fill the dots that follow $label in paragraph $p (splice at exact position)
 function fillDots($p, $label, $value) {
-  if ($value === '') return;
+  if ($value === '') return false;
   $full = '';
   foreach (wRuns($p) as $r) $full .= runText($r);
   $pos = strpos($full, $label);
-  if ($pos === false) return;
+  if ($pos === false) return false;
   $len = strlen($full);
   $ws = $pos + strlen($label);
   while ($ws < $len && $full[$ws] === ' ') $ws++;
@@ -186,7 +186,9 @@ function fillDots($p, $label, $value) {
   if ($e > $ws) {
     $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
     spliceAt($p, $ws, $e - $ws, $ins);
+    return true;
   }
+  return false;
 }
 
 // Name line: title+first_name, then a comma, then the ນາມສະກຸນ label + surname. No dots.
@@ -393,16 +395,21 @@ foreach ($paras as $p) {
     }
     // occurrence-aware: ops may be a list of op-lists (one per identical line)
     $opsList = $ops;
+    $usedOcc = null;
     if (isset($ops[0]) && is_array($ops[0]) && isset($ops[0][0]) && is_array($ops[0][0])) {
       $i = $occurrence[$anchor] ?? 0;
       $opsList = $ops[$i] ?? end($ops);
-      $occurrence[$anchor] = $i + 1;
+      $usedOcc = $i;
     }
+    $anyFilled = false;
     foreach ($opsList as $op) {
-      if ($op[0] === 'dots')   fillDots($p, $op[1], $op[2]);
-      else if ($op[0] === 'phrase') replacePhrase($p, $op[1], $op[2]);
+      if ($op[0] === 'dots')   { if (fillDots($p, $op[1], $op[2])) $anyFilled = true; }
+      else if ($op[0] === 'phrase') { replacePhrase($p, $op[1], $op[2]); $anyFilled = true; }
       else if ($op[0] === 'name') fillNameLine($p, $op[1], $op[2]);
     }
+    // only consume an occurrence slot when the paragraph actually got filled
+    // (prevents heading lines that match the PREFIX from stealing a slot)
+    if ($usedOcc !== null && $anyFilled) { $occurrence[$anchor] = $usedOcc + 1; }
     break; // one anchor per paragraph
   }
 }
