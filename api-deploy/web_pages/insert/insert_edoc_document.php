@@ -54,6 +54,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $manualHouseNo     = trim($_POST['house_no'] ?? '');
     $manualUnitNo      = trim($_POST['unit_no'] ?? '');
 
+    // ── buyer (land-sale) — real citizen record keyed by national ID ──
+    $bCitizenId  = !empty($_POST['buyer_citizen_id']) ? (int)$_POST['buyer_citizen_id'] : 0;
+    $bIdCard     = trim($_POST['b_manual_id_card'] ?? '');
+    $bFirst      = trim($_POST['b_first_name'] ?? '');
+    $bLast       = trim($_POST['b_last_name'] ?? '');
+    $bTitle      = trim($_POST['b_title'] ?? '');
+    $bGender     = trim($_POST['b_gender'] ?? '');
+    $bDob        = !empty($_POST['b_dob']) ? $_POST['b_dob'] : null;
+    $bPhone      = trim($_POST['b_phone'] ?? '');
+    $bEmail      = trim($_POST['b_email'] ?? '');
+    $bNationality= trim($_POST['b_nationality'] ?? '');
+    $bOrigin     = trim($_POST['b_origin'] ?? '');
+    $bEthnicity  = trim($_POST['b_ethnicity'] ?? '');
+    $bReligion   = trim($_POST['b_religion'] ?? '');
+    $bOccupation = trim($_POST['b_occupation'] ?? '');
+    $bIdIssueDate= !empty($_POST['b_id_card_issue_date']) ? $_POST['b_id_card_issue_date'] : null;
+    $bHouseNo    = trim($_POST['b_house_no'] ?? '');
+    $bUnitNo     = trim($_POST['b_unit_no'] ?? '');
+    $bProvinceId = !empty($_POST['b_province_id']) ? (int)$_POST['b_province_id'] : null;
+    $bDistrictId = !empty($_POST['b_district_id']) ? (int)$_POST['b_district_id'] : null;
+    $bTasengId   = !empty($_POST['b_taseng_id']) ? (int)$_POST['b_taseng_id'] : null;
+    $bVillageId  = !empty($_POST['b_village_id']) ? (int)$_POST['b_village_id'] : null;
+    $bAddress    = trim($_POST['b_address_line'] ?? '');
+    $bBirthProvinceId = !empty($_POST['b_birth_province_id']) ? (int)$_POST['b_birth_province_id'] : null;
+    $bBirthDistrictId = !empty($_POST['b_birth_district_id']) ? (int)$_POST['b_birth_district_id'] : null;
+    $bBirthTasengId   = !empty($_POST['b_birth_taseng_id']) ? (int)$_POST['b_birth_taseng_id'] : null;
+    $bBirthVillageId  = !empty($_POST['b_birth_village_id']) ? (int)$_POST['b_birth_village_id'] : null;
+
     if (empty($doc_item_id)) {
         $_SESSION['alert'] = ['type' => 'error', 'message' => 'ກະລຸນາເລືອກເອກະສານ'];
         header("Location: ../pages/list_edoc_document.php"); exit;
@@ -128,21 +156,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
 
+        // ── buyer citizen (land-sale): find by national ID or create/update ──
+        $buyer_id = 0;
+        if ($bFirst !== '' || $bLast !== '' || $bIdCard !== '' || $bPhone !== '') {
+            // if we already have a resolved buyer id (edit reload or lookup), use it
+            if ($bCitizenId > 0) {
+                $buyer_id = $bCitizenId;
+            } elseif ($bIdCard !== '') {
+                $bf = $conn->prepare("SELECT id FROM edoc_citizen WHERE id_card=? AND is_active=1 LIMIT 1");
+                $bf->execute([$bIdCard]);
+                $buyer_id = (int)$bf->fetchColumn();
+            }
+            if ($buyer_id > 0) {
+                // update existing buyer with the (possibly corrected) form data
+                $bFull = trim($bFirst . ' ' . $bLast);
+                $conn->prepare("UPDATE edoc_citizen SET first_name=?, last_name=?, full_name=?, title=?, gender=?, dob=?,
+                                id_card=?, phone=?, email=?, village_id=?, province_id=?, district_id=?, taseng_id=?, address_line=?,
+                                nationality=?, origin=?, ethnicity=?, religion=?, occupation=?, birth_village_id=?, birth_district_id=?,
+                                birth_taseng_id=?, birth_province_id=?, id_card_issue_date=?, house_no=?, unit_no=? WHERE id=?")
+                    ->execute([$bFirst ?: null, $bLast ?: null, $bFull ?: null, $bTitle ?: null, $bGender ?: null, $bDob,
+                        $bIdCard ?: null, $bPhone ?: null, $bEmail ?: null, $bVillageId, $bProvinceId, $bDistrictId, $bTasengId, $bAddress ?: null,
+                        $bNationality ?: null, $bOrigin ?: null, $bEthnicity ?: null, $bReligion ?: null, $bOccupation ?: null,
+                        $bBirthVillageId, $bBirthDistrictId, $bBirthTasengId, $bBirthProvinceId, $bIdIssueDate, $bHouseNo ?: null, $bUnitNo ?: null,
+                        $buyer_id]);
+            } else {
+                // create a new buyer citizen (keyed by national ID)
+                $bFull = trim($bFirst . ' ' . $bLast);
+                $bPw = password_hash(substr($bPhone ?: 'changeme', -6) ?: 'changeme', PASSWORD_DEFAULT);
+                $conn->prepare("INSERT INTO edoc_citizen (phone, email, password_hash, full_name, title, first_name, last_name, id_card,
+                                village_id, province_id, district_id, taseng_id, address_line, dob, gender, nationality, origin, ethnicity, religion,
+                                occupation, birth_village_id, birth_district_id, birth_taseng_id, birth_province_id, id_card_issue_date, house_no, unit_no, is_active)
+                                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)")
+                    ->execute([$bPhone ?: null, $bEmail ?: null, $bPw, $bFull ?: null, $bTitle ?: null, $bFirst ?: null, $bLast ?: null, $bIdCard ?: null,
+                        $bVillageId, $bProvinceId, $bDistrictId, $bTasengId, $bAddress ?: null, $bDob, $bGender ?: null, $bNationality ?: null, $bOrigin ?: null,
+                        $bEthnicity ?: null, $bReligion ?: null, $bOccupation ?: null, $bBirthVillageId, $bBirthDistrictId, $bBirthTasengId, $bBirthProvinceId,
+                        $bIdIssueDate, $bHouseNo ?: null, $bUnitNo ?: null]);
+                $buyer_id = (int)$conn->lastInsertId();
+            }
+        }
+
         $doc_status = ($mode === 'draft') ? 'DRAFT' : 'PENDING_APPROVAL';
 
         if ($doc_id > 0) {
             $stmt = $conn->prepare("UPDATE edoc_document
-                                      SET citizen_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, source='OFFICE', submitted_at=IF(?='PENDING_APPROVAL', COALESCE(submitted_at, NOW()), submitted_at)
+                                      SET citizen_id=?, buyer_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, source='OFFICE', submitted_at=IF(?='PENDING_APPROVAL', COALESCE(submitted_at, NOW()), submitted_at)
                                     WHERE id=?");
-            $stmt->execute([$citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $doc_status, $doc_id]);
+            $stmt->execute([$citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $doc_status, $doc_id]);
         } else {
             // sequence from max existing suffix for today (COUNT-based numbering collides after same-day deletes)
             $prefix = 'DOC-' . date('Ymd') . '-';
             $seq = (int)$conn->query("SELECT COALESCE(MAX(CAST(SUBSTRING(doc_no, 14) AS UNSIGNED)), 0) + 1 FROM edoc_document WHERE doc_no LIKE " . $conn->quote($prefix . '%'))->fetchColumn();
             $doc_no = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
             $submitted_at_sql = ($doc_status === 'PENDING_APPROVAL') ? 'NOW()' : 'NULL';
-            $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, doc_item_id, village_id, off_id, status, amount, source, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,?,$submitted_at_sql)");
-            $stmt->execute([$doc_no, $citizen_id, $doc_item_id, $village_id, $off_id, $doc_status, $amount, 'OFFICE', $created_by]);
+            $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, buyer_id, doc_item_id, village_id, off_id, status, amount, source, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,?,?,$submitted_at_sql)");
+            $stmt->execute([$doc_no, $citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, 'OFFICE', $created_by]);
             $doc_id = (int)$conn->lastInsertId();
         }
 

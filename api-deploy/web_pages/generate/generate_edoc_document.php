@@ -13,15 +13,27 @@ if ($doc_id <= 0) { die('Missing doc_id'); }
 // ── load doc + citizen + residence data ──────────────────────────────
 $d = $conn->prepare("SELECT d.*, c.*, di.doc_type_id, v.name_lo AS village_name,
                             f.name_lo AS taseng_name, g.name_lo AS district_name,
-                            h.name_lo AS province_name
+                            h.name_lo AS province_name,
+                            b.id AS buyer_citizen_id, b.title AS buyer_title, b.first_name AS buyer_first_name,
+                            b.last_name AS buyer_last_name, b.dob AS buyer_dob, b.id_card AS buyer_id_card,
+                            b.phone AS buyer_phone, b.nationality AS buyer_nationality, b.origin AS buyer_origin,
+                            b.ethnicity AS buyer_ethnicity, b.religion AS buyer_religion,
+                            b.occupation AS buyer_occupation, b.unit_no AS buyer_unit_no,
+                            bv.name_lo AS buyer_village_name, bt.name_lo AS buyer_taseng_name,
+                            bd.name_lo AS buyer_district_name, bp.name_lo AS buyer_province_name
                      FROM edoc_document d
                      JOIN edoc_citizen c ON d.citizen_id = c.id
                      JOIN edoc_doc_item di ON d.doc_item_id = di.id
+                     LEFT JOIN edoc_citizen b ON d.buyer_id = b.id
                      LEFT JOIN edoc_village v ON c.village_id = v.id
                      LEFT JOIN edoc_taseng f ON c.taseng_id = f.id
                      LEFT JOIN edoc_district g ON c.district_id = g.id
                      LEFT JOIN edoc_province h ON c.province_id = h.id
-                     WHERE d.id = ?");
+                                          LEFT JOIN edoc_village bv ON b.village_id = bv.id
+                                          LEFT JOIN edoc_taseng bt ON b.taseng_id = bt.id
+                                          LEFT JOIN edoc_district bd ON b.district_id = bd.id
+                                          LEFT JOIN edoc_province bp ON b.province_id = bp.id
+                                          WHERE d.id = ?");
 $d->execute([$doc_id]);
 $row = $d->fetch(PDO::FETCH_ASSOC);
 if (!$row) { die('Document not found'); }
@@ -250,24 +262,24 @@ if ((int)$row['doc_type_id'] === 14) {
         'ທິດໃຕ້' => [['dots', 'ທິດໃຕ້ ຕິດກັບ', $eavGet('border_south_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_south_meters')]],
         'ທິດຕາເວັນອອກ' => [['dots', 'ທິດຕາເວັນອອກ ຕິດກັບ', $eavGet('border_east_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_east_meters')]],
         'ທິດຕາເວັນຕົກ' => [['dots', 'ທິດຕາເວັນຕົກ ຕິດກັບ', $eavGet('border_west_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_west_meters')]],
-        // buyer
+        // buyer (real citizen record via buyer_id)
         'ຂາຍໃຫ້ແກ່' => [
-            ['dots', 'ຂາຍໃຫ້ແກ່ທ້າວ/ນາງ', $eavGet('buyer_name')],
-            ['dots', 'ອາຍຸ', $eavGet('buyer_age')],
-            ['dots', 'ສັນຊາດ', $eavGet('buyer_nationality')],
-            ['dots', 'ຊົນເຜົ່າ', $eavGet('buyer_ethnicity')],
-            ['dots', 'ສາສະໜາ', $eavGet('buyer_religion')],
-            ['dots', 'ອາຊີບ', $eavGet('buyer_occupation')],
-            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $eavGet('buyer_unit')],
-            ['dots', 'ບ້ານ', $eavGet('buyer_village')],
-            ['dots', 'ເມືອງ', $eavGet('buyer_district')],
-            ['dots', 'ແຂວງ', $eavGet('buyer_province')],
+            ['phrase', 'ຂາຍໃຫ້ແກ່ທ້າວ/ນາງ', trim($row['buyer_title'] . ' ' . $row['buyer_first_name'] . ' ' . $row['buyer_last_name'])],
+            ['dots', 'ອາຍຸ', $row['buyer_dob'] ? floor((time()-strtotime($row['buyer_dob']))/31536000) : ''],
+            ['dots', 'ສັນຊາດ', $row['buyer_nationality']],
+            ['dots', 'ຊົນເຜົ່າ', $row['buyer_ethnicity']],
+            ['dots', 'ສາສະໜາ', $row['buyer_religion']],
+            ['dots', 'ອາຊີບ', $row['buyer_occupation']],
+            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['buyer_unit_no']],
+            ['dots', 'ບ້ານ', $row['buyer_village_name'] ?? ''],
+            ['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''],
+            ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? ''],
             ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('buyer_family_book')],
-            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $eavGet('buyer_id_card')],
-            ['dots', 'ເບີໂທ', $eavGet('buyer_phone')],
+            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['buyer_id_card']],
+            ['dots', 'ເບີໂທ', $row['buyer_phone']],
         ],
         // final ownership statement (buyer name again)
-        'ເປັນເຈົ້າຂອງ' => [['dots', 'ທ້າວ/ນາງ', $eavGet('buyer_name')]],
+        'ເປັນເຈົ້າຂອງ' => [['dots', 'ທ້າວ/ນາງ', trim($row['buyer_title'] . ' ' . $row['buyer_first_name'] . ' ' . $row['buyer_last_name'])]],
     ];
 } else {
     // residence (type 1) — original fill table

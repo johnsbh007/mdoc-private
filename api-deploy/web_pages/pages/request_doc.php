@@ -14,15 +14,46 @@ $edit_doc_id = !empty($_GET['doc_id']) ? (int)$_GET['doc_id'] : 0;
 $editData = null;   // joined citizen + doc (+ doc_type/item)
 $editForm = [];     // field_id => saved value
 if ($edit_doc_id) {
-    $st = $conn->prepare("SELECT c.*, d.doc_no, d.status, d.amount, di.doc_type_id, di.id AS doc_item_id
+    $st = $conn->prepare("SELECT c.*, d.doc_no, d.status, d.amount, di.doc_type_id, di.id AS doc_item_id,
+                                 b.id AS buyer_id, b.id_card AS buyer_id_card, b.first_name AS buyer_first_name,
+                                 b.last_name AS buyer_last_name, b.title AS buyer_title, b.gender AS buyer_gender,
+                                 b.dob AS buyer_dob, b.phone AS buyer_phone, b.email AS buyer_email,
+                                 b.nationality AS buyer_nationality, b.origin AS buyer_origin,
+                                 b.ethnicity AS buyer_ethnicity, b.religion AS buyer_religion,
+                                 b.occupation AS buyer_occupation, b.id_card_issue_date AS buyer_id_card_issue_date,
+                                 b.house_no AS buyer_house_no, b.unit_no AS buyer_unit_no,
+                                 b.address_line AS buyer_address_line, b.province_id AS buyer_province_id,
+                                 b.district_id AS buyer_district_id, b.taseng_id AS buyer_taseng_id,
+                                 b.village_id AS buyer_village_id, b.birth_province_id AS buyer_birth_province_id,
+                                 b.birth_district_id AS buyer_birth_district_id, b.birth_taseng_id AS buyer_birth_taseng_id,
+                                 b.birth_village_id AS buyer_birth_village_id
                           FROM edoc_document d
                           JOIN edoc_doc_item di ON d.doc_item_id = di.id
                           JOIN edoc_citizen c ON d.citizen_id = c.id
+                          LEFT JOIN edoc_citizen b ON d.buyer_id = b.id
                           WHERE d.id = ?");
     $st->execute([$edit_doc_id]);
     $editData = $st->fetch(PDO::FETCH_ASSOC);
     if ($editData) {
         $pageTitle = "ແກ້ໄຂຮ່າງ - Edit Draft";
+        // expose buyer citizen object to JS for prefill (buyer_* columns -> nested buyer)
+        if (!empty($editData['buyer_id'])) {
+            $editData['buyer'] = [
+                'id' => $editData['buyer_id'], 'id_card' => $editData['buyer_id_card'],
+                'first_name' => $editData['buyer_first_name'], 'last_name' => $editData['buyer_last_name'],
+                'title' => $editData['buyer_title'], 'gender' => $editData['buyer_gender'],
+                'dob' => $editData['buyer_dob'], 'phone' => $editData['buyer_phone'], 'email' => $editData['buyer_email'],
+                'nationality' => $editData['buyer_nationality'], 'origin' => $editData['buyer_origin'],
+                'ethnicity' => $editData['buyer_ethnicity'], 'religion' => $editData['buyer_religion'],
+                'occupation' => $editData['buyer_occupation'], 'id_card_issue_date' => $editData['buyer_id_card_issue_date'],
+                'house_no' => $editData['buyer_house_no'], 'unit_no' => $editData['buyer_unit_no'],
+                'address_line' => $editData['buyer_address_line'], 'province_id' => $editData['buyer_province_id'],
+                'district_id' => $editData['buyer_district_id'], 'taseng_id' => $editData['buyer_taseng_id'],
+                'village_id' => $editData['buyer_village_id'], 'birth_province_id' => $editData['buyer_birth_province_id'],
+                'birth_district_id' => $editData['buyer_birth_district_id'], 'birth_taseng_id' => $editData['buyer_birth_taseng_id'],
+                'birth_village_id' => $editData['buyer_birth_village_id'],
+            ];
+        }
         // merge residence-specific structured fields (unit + geo) so the edit
         // form can pre-populate them (Bug: Unit/geo lost on re-edit)
         if ((int)$editData['doc_type_id'] === 1) {
@@ -208,10 +239,13 @@ function presetGeo(prefix, c) {
 
       <ul class="nav nav-tabs mb-3" id="reqTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-person" data-bs-toggle="tab" data-bs-target="#p-person" type="button" role="tab">1. ຂໍ້ມູນພົນລະເມືອງ (Person)</button>
+          <button class="nav-link active" id="tab-person" data-bs-toggle="tab" data-bs-target="#p-person" type="button" role="tab">1. ຂໍ້ມູນຜູ້ຂາຍ (Seller)</button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-doc" data-bs-toggle="tab" data-bs-target="#p-doc" type="button" role="tab">2. ຂໍ້ມູນເອກະສານ (Document)</button>
+          <button class="nav-link" id="tab-buyer" data-bs-toggle="tab" data-bs-target="#p-buyer" type="button" role="tab">2. ຂໍ້ມູນຜູ້ຊື້ (Buyer)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-doc" data-bs-toggle="tab" data-bs-target="#p-doc" type="button" role="tab">3. ຂໍ້ມູນອື່ນໆ (Other)</button>
         </li>
       </ul>
 
@@ -295,7 +329,87 @@ function presetGeo(prefix, c) {
           </div>
         </div>
 
-        <!-- TAB 2: DOCUMENT (rendered from edoc_doc_field for this doc_type) -->
+        <!-- TAB 2: BUYER (real citizen record, keyed by national ID) -->
+        <div class="tab-pane fade" id="p-buyer" role="tabpanel">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">ເລກບັດປະຈຳຕົວ ຜູ້ຊື້ (Buyer National ID)</label>
+              <div class="input-group">
+                <input type="text" id="b_nid" class="form-control" placeholder="ປ້ອນເລກບັດ...">
+                <button class="btn btn-outline-secondary" type="button" onclick="lookupBuyerNid()">ຄົ້ນຫາ</button>
+              </div>
+              <small id="b_nidMsg" class="text-muted"></small>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-2">
+              <label class="form-label">ຄຳນຳ (Title)</label>
+              <select id="b_title" class="form-select">
+                <option value="">--</option><option value="ທ້າວ">ທ້າວ</option><option value="ນາງ">ນາງ</option>
+              </select>
+            </div>
+            <div class="col-md-3"><label class="form-label">ຊື່</label><input id="b_first_name" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">ນາມສະກຸນ</label><input id="b_last_name" class="form-control"></div>
+            <div class="col-md-2"><label class="form-label">ເພດ</label>
+              <select id="b_gender" class="form-select"><option value="">--</option><option value="M">ຊາຍ</option><option value="F">ຍິງ</option></select>
+            </div>
+            <div class="col-md-2"><label class="form-label">ວັນເກີດ</label><input type="date" id="b_dob" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">ເບີໂທ</label><input id="b_phone" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">ອີເມວ</label><input id="b_email" class="form-control"></div>
+            <div class="col-md-2"><label class="form-label">ສັນຊາດ (Nationality)</label><select id="b_nationality" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ເຊື້ອຊາດ (Origin)</label><select id="b_origin" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ຊົນເຜົ່າ (Ethnicity)</label><select id="b_ethnicity" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ສາສະໜາ (Religion)</label><select id="b_religion" class="form-select"></select></div>
+            <div class="col-md-3"><label class="form-label">ອາຊີບ (Occupation)</label><select id="b_occupation" class="form-select"></select></div>
+            <div class="col-md-3"><label class="form-label">ວັນອອກບັດ</label><input type="date" id="b_id_card_issue_date" class="form-control"></div>
+          </div>
+          <hr>
+          <h6>ທີ່ຢູ່ປັດຈຸບັນ ຜູ້ຊື້ (Buyer current address)</h6>
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label">ແຂວງ (Province)</label>
+              <select id="b_province_id" class="form-select" onchange="loadGeo('b_province_id','b_district_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ເມືອງ (District)</label>
+              <select id="b_district_id" class="form-select" onchange="loadGeo('b_district_id','b_taseng_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ຕາແສງ (Taseng)</label>
+              <select id="b_taseng_id" class="form-select" onchange="loadGeo('b_taseng_id','b_village_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ບ້ານ (Village)</label>
+              <select id="b_village_id" class="form-select"></select>
+            </div>
+            <div class="col-md-2"><label class="form-label">ເລກບ້ານ</label><input id="b_house_no" class="form-control"></div>
+            <div class="col-md-2"><label class="form-label">ໜ່ວຍ</label><input id="b_unit_no" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">ທີ່ຢູ່ເພີ່ມເຕີມ</label><input id="b_address_line" class="form-control"></div>
+          </div>
+          <hr>
+          <h6>ສະຖານທີ່ເກີດ ຜູ້ຊື້ (Buyer birth place)</h6>
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label">ແຂວງເກີດ (Province)</label>
+              <select id="b_birth_province_id" class="form-select" onchange="loadGeo('b_birth_province_id','b_birth_district_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ເມືອງເກີດ (District)</label>
+              <select id="b_birth_district_id" class="form-select" onchange="loadGeo('b_birth_district_id','b_birth_taseng_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ຕາແສງເກີດ (Taseng)</label>
+              <select id="b_birth_taseng_id" class="form-select" onchange="loadGeo('b_birth_taseng_id','b_birth_village_id')"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ບ້ານເກີດ (Village)</label>
+              <select id="b_birth_village_id" class="form-select"></select>
+            </div>
+          </div>
+          <input type="hidden" id="buyer_citizen_id" value="">
+        </div>
+
+        <!-- TAB 3: DOCUMENT (rendered from edoc_doc_field for this doc_type) -->
         <div class="tab-pane fade" id="p-doc" role="tabpanel">
           <div id="docFields"><p class="text-muted">ກະລຸນາເລືອກປະເພດ ແລະ ປ້ອນຂໍ້ມູນພົນລະເມືອງກ່ອນ.</p></div>
         </div>
@@ -348,6 +462,35 @@ function fillPerson(c) {
   presetGeo('', c);
   presetGeo('birth_', c);
   document.getElementById('citizen_id').value = c.id || '';
+}
+
+function lookupBuyerNid() {
+  const nid = document.getElementById('b_nid').value.trim();
+  if (!nid) return;
+  document.getElementById('b_nidMsg').textContent = 'ກຳລັງຄົ້ນຫາ...';
+  $.get('../ajax/search/get_citizen_by_nid.php', {nid}, function(res){
+    const r = parseJson(res);
+    if (r && r.status === 'success') {
+      fillBuyer(r.data);
+      document.getElementById('b_nidMsg').textContent = 'ພົບຂໍ້ມູນ: ' + (r.data.full_name || '');
+    } else {
+      document.getElementById('b_nidMsg').textContent = 'ບໍ່ພົບ (ປ້ອນໃໝ່).';
+    }
+  });
+}
+
+function fillBuyer(c) {
+  const map = {b_first_name:'first_name',b_last_name:'last_name',b_gender:'gender',b_dob:'dob',b_phone:'phone',b_email:'email',
+    b_nationality:'nationality',b_origin:'origin',b_ethnicity:'ethnicity',b_religion:'religion',b_occupation:'occupation',
+    b_id_card_issue_date:'id_card_issue_date',b_house_no:'house_no',b_unit_no:'unit_no',
+    b_address_line:'address_line'};
+  for (const [id,k] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el && c[k] != null) el.value = c[k];
+  }
+  presetGeo('b_', c);
+  presetGeo('b_birth_', c);
+  document.getElementById('buyer_citizen_id').value = c.id || '';
 }
 
 function loadDocFields() {
@@ -447,7 +590,34 @@ function saveRequest(mode) {
     parents_province_id: document.getElementById('parent_province_id') ? document.getElementById('parent_province_id').value : null,
     parents_district_id: document.getElementById('parent_district_id') ? document.getElementById('parent_district_id').value : null,
     parents_taseng_id: document.getElementById('parent_taseng_id') ? document.getElementById('parent_taseng_id').value : null,
-    parents_village_id: document.getElementById('parent_village_id') ? document.getElementById('parent_village_id').value : null
+    parents_village_id: document.getElementById('parent_village_id') ? document.getElementById('parent_village_id').value : null,
+    // Buyer (real citizen record, keyed by national ID)
+    buyer_citizen_id: document.getElementById('buyer_citizen_id') ? document.getElementById('buyer_citizen_id').value || 0 : 0,
+    b_manual_id_card: document.getElementById('b_nid') ? document.getElementById('b_nid').value : '',
+    b_first_name: document.getElementById('b_first_name') ? document.getElementById('b_first_name').value : '',
+    b_last_name: document.getElementById('b_last_name') ? document.getElementById('b_last_name').value : '',
+    b_title: document.getElementById('b_title') ? document.getElementById('b_title').value : '',
+    b_gender: document.getElementById('b_gender') ? document.getElementById('b_gender').value : '',
+    b_dob: document.getElementById('b_dob') ? document.getElementById('b_dob').value : '',
+    b_phone: document.getElementById('b_phone') ? document.getElementById('b_phone').value : '',
+    b_email: document.getElementById('b_email') ? document.getElementById('b_email').value : '',
+    b_nationality: document.getElementById('b_nationality') ? document.getElementById('b_nationality').value : '',
+    b_origin: document.getElementById('b_origin') ? document.getElementById('b_origin').value : '',
+    b_ethnicity: document.getElementById('b_ethnicity') ? document.getElementById('b_ethnicity').value : '',
+    b_religion: document.getElementById('b_religion') ? document.getElementById('b_religion').value : '',
+    b_occupation: document.getElementById('b_occupation') ? document.getElementById('b_occupation').value : '',
+    b_id_card_issue_date: document.getElementById('b_id_card_issue_date') ? document.getElementById('b_id_card_issue_date').value : '',
+    b_house_no: document.getElementById('b_house_no') ? document.getElementById('b_house_no').value : '',
+    b_unit_no: document.getElementById('b_unit_no') ? document.getElementById('b_unit_no').value : '',
+    b_province_id: document.getElementById('b_province_id') ? document.getElementById('b_province_id').value || null : null,
+    b_district_id: document.getElementById('b_district_id') ? document.getElementById('b_district_id').value || null : null,
+    b_taseng_id: document.getElementById('b_taseng_id') ? document.getElementById('b_taseng_id').value || null : null,
+    b_village_id: document.getElementById('b_village_id') ? document.getElementById('b_village_id').value || null : null,
+    b_address_line: document.getElementById('b_address_line') ? document.getElementById('b_address_line').value : '',
+    b_birth_province_id: document.getElementById('b_birth_province_id') ? document.getElementById('b_birth_province_id').value || null : null,
+    b_birth_district_id: document.getElementById('b_birth_district_id') ? document.getElementById('b_birth_district_id').value || null : null,
+    b_birth_taseng_id: document.getElementById('b_birth_taseng_id') ? document.getElementById('b_birth_taseng_id').value || null : null,
+    b_birth_village_id: document.getElementById('b_birth_village_id') ? document.getElementById('b_birth_village_id').value || null : null
   };
   document.querySelectorAll('#docFields [name^="field_"]').forEach(el => { data[el.name] = el.value; });
   $.ajax({
@@ -475,13 +645,31 @@ $(function(){
   fillSelect('occupation', LOOKUP.occupation, 'ເລືອກອາຊີບ');
   fillSelect('province_id', PROVINCES, 'ເລືອກແຂວງ');
   fillSelect('birth_province_id', PROVINCES, 'ເລືອກແຂວງ');
+  // Buyer selects
+  fillSelect('b_nationality', LOOKUP.country, 'ເລືອກສັນຊາດ');
+  fillSelect('b_origin', LOOKUP.country, 'ເລືອກເຊື້ອຊາດ');
+  fillSelect('b_ethnicity', LOOKUP.ethnicity, 'ເລືອກຊົນເຜົ່າ');
+  fillSelect('b_religion', LOOKUP.religion, 'ເລືອກສາສະໜາ');
+  fillSelect('b_occupation', LOOKUP.occupation, 'ເລືອກອາຊີບ');
+  fillSelect('b_province_id', PROVINCES, 'ເລືອກແຂວງ');
+  fillSelect('b_birth_province_id', PROVINCES, 'ເລືອກແຂວງ');
   if (document.getElementById('nationality')) document.getElementById('nationality').value = 'LA';
   if (document.getElementById('origin')) document.getElementById('origin').value = 'LA';
+  if (document.getElementById('b_nationality')) document.getElementById('b_nationality').value = 'LA';
+  if (document.getElementById('b_origin')) document.getElementById('b_origin').value = 'LA';
   if (EDIT_DATA) {
     if (EDIT_DATA.id_card) document.getElementById('nid').value = EDIT_DATA.id_card;
     fillPerson(EDIT_DATA);
     if (document.getElementById('title')) document.getElementById('title').value = EDIT_DATA.title || '';
     document.getElementById('nidMsg').textContent = 'ແກ້ໄຂຮ່າງ: ' + (EDIT_DATA.first_name || '') + ' ' + (EDIT_DATA.last_name || '');
+    // buyer prefill on edit (buyer loaded as a citizen via buyer_id)
+    if (EDIT_DATA.buyer) {
+      const bc = EDIT_DATA.buyer;
+      if (bc.id_card) document.getElementById('b_nid').value = bc.id_card;
+      fillBuyer(bc);
+      if (bc.title) document.getElementById('b_title').value = bc.title;
+      document.getElementById('b_nidMsg').textContent = 'ຜູ້ຊື້: ' + (bc.first_name || '') + ' ' + (bc.last_name || '');
+    }
   }
   loadDocFields();
 });

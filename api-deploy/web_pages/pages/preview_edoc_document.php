@@ -51,6 +51,23 @@ if ((int)$row['doc_type_id'] === 14) {
         <h6><i class="fas fa-file-contract text-primary"></i> ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ — ສະຫຼຸບຂໍ້ມູນ (Land sale — data summary)</h6>
         <div class="ls-row"><span class="k">ເລກທີ່ຄຳຮ້ອງ / Doc no</span><span class="v"><?= htmlspecialchars($row['doc_no']) ?></span></div>
         <div class="ls-row"><span class="k">ຜູ້ຂາຍ (ຜູ້ຖືບັດ) / Seller (applicant)</span><span class="v"><?= htmlspecialchars(trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''))) ?></span></div>
+        <?php
+        // buyer shown from the citizen record (buyer_id -> edoc_citizen)
+        $buyerName = '';
+        if (!empty($row['buyer_id'])) {
+            $bs = $conn->prepare("SELECT title, first_name, last_name, id_card, dob FROM edoc_citizen WHERE id=?");
+            $bs->execute([$row['buyer_id']]);
+            $buyer = $bs->fetch(PDO::FETCH_ASSOC);
+            if ($buyer) {
+                $buyerName = trim(($buyer['title'] ?? '') . ' ' . ($buyer['first_name'] ?? '') . ' ' . ($buyer['last_name'] ?? ''));
+                $buyerIdCard = $buyer['id_card'] ?? '';
+                $buyerDob = $buyer['dob'] ?? '';
+                if ($buyerDob) { $buyerName .= ' (ອາຍຸ ' . floor((time()-strtotime($buyerDob))/31536000) . ')'; }
+                if ($buyerIdCard) { $buyerName .= ' — ບັດ ' . $buyerIdCard; }
+            }
+        }
+        ?>
+        <div class="ls-row"><span class="k">ຜູ້ຊື້ / Buyer</span><span class="v"><?= htmlspecialchars($buyerName ?: '—') ?></span></div>
         <?php if (!$eav): ?>
           <div class="ls-empty mt-3">ຍັງບໍ່ມີຂໍ້ມູນສະເພາະເອກະສານ (No document fields captured yet)</div>
         <?php else: foreach ($eav as $f): ?>
