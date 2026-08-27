@@ -216,10 +216,16 @@ $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 $opsByAnchor = [];
 if ((int)$row['doc_type_id'] === 14) {
     $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    // Seller name
+    $sellerName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    // Buyer age (computed from dob)
+    $buyerAge = $row['buyer_dob'] ? floor((time()-strtotime($row['buyer_dob']))/31536000) : '';
+    // Buyer name
+    $buyerName = trim($row['buyer_title'] . ' ' . $row['buyer_first_name'] . ' ' . $row['buyer_last_name']);
     $opsByAnchor = [
             '/ຄປຕ' => [['dots', 'ເລກທີ່', $row['doc_no']]],
             'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
-            // line 8-10: three witnesses — each line starts with "1.ທ່ານ…" / "2.ທ່ານ…" / "3.ທ່ານ…"
+            // witnesses (3 lines)
         '1.ທ່ານ' => [
             ['dots', 'ທ່ານ', $eavGet('witness1_name')],
             ['dots', 'ອາຍຸ', $eavGet('witness1_age')],
@@ -238,18 +244,49 @@ if ((int)$row['doc_type_id'] === 14) {
             ['dots', 'ອາຊີບ', $eavGet('witness3_occupation')],
             ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('witness3_village')],
         ],
-        // seller = applicant (citizen)
+        // seller = applicant (citizen) — P10: name, age, nationality, unit
         'ຂ້າພະເຈົ້າ' => [
-            ['phrase', 'ທ້າວ/ນາງ', $nameTitle],
+            ['dots', 'ຂ້າພະເຈົ້າ', $sellerName],
             ['dots', 'ອາຍຸ', $row['age'] ?? ($row['dob'] ? floor((time()-strtotime($row['dob']))/31536000) : '')],
             ['dots', 'ສັນຊາດ', $nationalityName],
             ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['unit_no']],
-            ['dots', 'ບ້ານ', $row['village_name']],
-            ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
-            ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
-            ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('seller_family_book')],
-            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
-            ['dots', 'ເບີໂທ', $row['phone']],
+        ],
+        // seller continuation — P11: village, district, province, family book (1st occurrence)
+        'PREFIXບ້ານ' => [
+            [['dots', 'ບ້ານ', $row['village_name']],
+             ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+             ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('seller_family_book')]],
+            [['dots', 'ບ້ານ', $row['buyer_village_name'] ?? ''],
+             ['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? ''],
+             ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('buyer_family_book')]],
+        ],
+        // seller continuation — P12: id card, phone (1st occurrence)
+        'PREFIXລົງວັນທີ' => [
+            [['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
+             ['dots', 'ເບີໂທ', $row['phone']]],
+            [['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['buyer_id_card']],
+             ['dots', 'ເບີໂທ', $row['buyer_phone']]],
+        ],
+        // buyer (real citizen record via buyer_id) — P19: name, age
+        'ຂາຍໃຫ້ແກ່' => [
+            ['phrase', 'ຂາຍໃຫ້ແກ່ທ້າວ/ນາງ', $buyerName],
+            ['dots', 'ອາຍຸ', $buyerAge],
+        ],
+        // buyer continuation — P20: nationality, ethnicity, religion, occupation, unit (unique)
+        'PREFIXສັນຊາດ' => [
+            ['dots', 'ສັນຊາດ', $row['buyer_nationality']],
+            ['dots', 'ຊົນເຜົ່າ', $row['buyer_ethnicity']],
+            ['dots', 'ສາສະໜາ', $row['buyer_religion']],
+            ['dots', 'ອາຊີບ', $row['buyer_occupation']],
+            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['buyer_unit_no']],
+        ],
+        // buyer continuation — P21: village, district, province, book (2nd occurrence via PREFIXບ້ານ above)
+        // buyer continuation — P22: id card, phone (2nd occurrence via PREFIXລົງວັນທີ above)
+        // final ownership statement — P24: buyer name (unique)
+        'PREFIXທ້າວ/ນາງ' => [
+            ['dots', 'ທ້າວ/ນາງ', $buyerName],
         ],
         // land
         'ໄດ້ເຫັນດີຕົກລົງຂາຍ' => [
@@ -257,29 +294,11 @@ if ((int)$row['doc_type_id'] === 14) {
             ['dots', 'ເປັນຈໍານວນເງິນ', number_format((float)$eavGet('land_amount'))],
             ['dots', 'ເຊິ່ງມີເນື້ອທີ່', $eavGet('land_area')],
         ],
-        // borders (4 lines, each with neighbor + meters)
+        // borders (4 lines)
         'ທິດເໜືອ' => [['dots', 'ທິດເໜືອ ຕິດກັບ', $eavGet('border_north_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_north_meters')]],
         'ທິດໃຕ້' => [['dots', 'ທິດໃຕ້ ຕິດກັບ', $eavGet('border_south_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_south_meters')]],
         'ທິດຕາເວັນອອກ' => [['dots', 'ທິດຕາເວັນອອກ ຕິດກັບ', $eavGet('border_east_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_east_meters')]],
         'ທິດຕາເວັນຕົກ' => [['dots', 'ທິດຕາເວັນຕົກ ຕິດກັບ', $eavGet('border_west_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_west_meters')]],
-        // buyer (real citizen record via buyer_id)
-        'ຂາຍໃຫ້ແກ່' => [
-            ['phrase', 'ຂາຍໃຫ້ແກ່ທ້າວ/ນາງ', trim($row['buyer_title'] . ' ' . $row['buyer_first_name'] . ' ' . $row['buyer_last_name'])],
-            ['dots', 'ອາຍຸ', $row['buyer_dob'] ? floor((time()-strtotime($row['buyer_dob']))/31536000) : ''],
-            ['dots', 'ສັນຊາດ', $row['buyer_nationality']],
-            ['dots', 'ຊົນເຜົ່າ', $row['buyer_ethnicity']],
-            ['dots', 'ສາສະໜາ', $row['buyer_religion']],
-            ['dots', 'ອາຊີບ', $row['buyer_occupation']],
-            ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['buyer_unit_no']],
-            ['dots', 'ບ້ານ', $row['buyer_village_name'] ?? ''],
-            ['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''],
-            ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? ''],
-            ['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('buyer_family_book')],
-            ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['buyer_id_card']],
-            ['dots', 'ເບີໂທ', $row['buyer_phone']],
-        ],
-        // final ownership statement (buyer name again)
-        'ເປັນເຈົ້າຂອງ' => [['dots', 'ທ້າວ/ນາງ', trim($row['buyer_title'] . ' ' . $row['buyer_first_name'] . ' ' . $row['buyer_last_name'])]],
     ];
 } else {
     // residence (type 1) — original fill table
@@ -298,17 +317,26 @@ if ((int)$row['doc_type_id'] === 14) {
 }
 
 $paras = $dom->getElementsByTagNameNS($ns, 'p');
+$occurrence = []; // per-anchor occurrence counter (identical continuation lines)
 foreach ($paras as $p) {
   $full = '';
   foreach (wRuns($p) as $r) $full .= runText($r);
   $trimmed = ltrim($full);
   foreach ($opsByAnchor as $anchor => $ops) {
-    if (strpos($anchor, 'PREFIX') === 0) {
+    $isPrefix = (strpos($anchor, 'PREFIX') === 0);
+    if ($isPrefix) {
       if (strpos($trimmed, substr($anchor, 6)) !== 0) continue; // line-start match only
     } else {
       if (strpos($full, $anchor) === false) continue;
     }
-    foreach ($ops as $op) {
+    // occurrence-aware: ops may be a list of op-lists (one per identical line)
+    $opsList = $ops;
+    if (isset($ops[0]) && is_array($ops[0]) && isset($ops[0][0]) && is_array($ops[0][0])) {
+      $i = $occurrence[$anchor] ?? 0;
+      $opsList = $ops[$i] ?? end($ops);
+      $occurrence[$anchor] = $i + 1;
+    }
+    foreach ($opsList as $op) {
       if ($op[0] === 'dots')   fillDots($p, $op[1], $op[2]);
       else if ($op[0] === 'phrase') replacePhrase($p, $op[1], $op[2]);
       else if ($op[0] === 'name') fillNameLine($p, $op[1], $op[2]);
