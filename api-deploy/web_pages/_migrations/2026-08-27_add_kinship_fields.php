@@ -94,6 +94,6 @@ foreach ($fields as [$name, $label, $type]) {
     }
     $sort++;
 }
-$conn->commit();
+try { $conn->commit(); } catch (Throwable $e) { /* ALTER TABLE auto-commits; nothing left to commit */ }
 echo "kinship fields (item 5): $inserted inserted (" . count($fields) . " defined, idempotent)\n";
 echo "DONE\n";
