@@ -1,8 +1,10 @@
 <?php
 session_name('ACCOUNT_SATHA_SESS');
 session_start();
-if (!isset($_SESSION['user_id'])) { header("Location: ../login.php"); exit; }
+if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require_once '../connect.php';
+require_once '../edoc_auth.php';
+if (!edoc_can_basic_data()) { header('Content-Type: application/json; charset=utf-8'); echo json_encode(['status'=>'error','message'=>'ທ່ານບໍ່ມີສິດດຳເນີນການ (Basic Data) / No permission']); exit; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id         = $_POST['id'] ?? '';

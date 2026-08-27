@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 require '../connect.php';
 require_once '../edoc_auth.php';
-if (!edoc_can_basic_data()) { die('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນພື້ນຖານ / No access'); }
+// Basic-data lists are viewable by all roles; edit/delete require can_basic_data (buttons wrapped below)
 
 $_current = 'list_edoc_village.php';
 $alert = $_SESSION['alert'] ?? null;
@@ -105,7 +105,7 @@ require '../components/layout.php';
       </div>
       <div class="action-buttons-top mb-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
-        <button class="btn btn-success" onclick="openAddVillage()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button>
+        <?php if (edoc_can_basic_data()): ?><button class="btn btn-success" onclick="openAddVillage()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button><?php endif; ?>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
     </div>
@@ -188,10 +188,10 @@ require '../components/layout.php';
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
             <td class="text-center">
-              <button class="btn btn-warning" title="ແກ້ໄຂ" onclick="openEditVillage(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button>
+              <?php if (edoc_can_basic_data()): ?><button class="btn btn-warning" title="ແກ້ໄຂ" onclick="openEditVillage(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button><?php endif; ?>
             </td>
             <td class="text-center">
-              <button class="btn btn-danger" title="ລຶບ" onclick="deleteVillage(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button>
+              <?php if (edoc_can_basic_data()): ?><button class="btn btn-danger" title="ລຶບ" onclick="deleteVillage(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button><?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>

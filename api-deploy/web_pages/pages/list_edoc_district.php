@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 require '../connect.php';
 require_once '../edoc_auth.php';
-if (!edoc_can_basic_data()) { die('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນພື້ນຖານ / No access'); }
+// Basic-data lists are viewable by all roles; edit/delete require can_basic_data (buttons wrapped below)
 
 $_current = 'list_edoc_district.php';
 $alert = $_SESSION['alert'] ?? null;
@@ -124,7 +124,7 @@ require '../components/layout.php';
       
       <div class="action-buttons-top mb-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
-        <button class="btn btn-success" onclick="openAddDistrict()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button>
+        <?php if (edoc_can_basic_data()): ?><button class="btn btn-success" onclick="openAddDistrict()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button><?php endif; ?>
         <a href="../print/print_edoc_districts.php" target="_blank" class="btn btn-light border"><i class="fas fa-print"></i> ພິມ</a>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
@@ -180,10 +180,10 @@ require '../components/layout.php';
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
             <td class="text-center">
-              <button class="btn btn-warning" title="ແກ້ໄຂ" onclick="openEditDistrict(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button>
+              <?php if (edoc_can_basic_data()): ?><button class="btn btn-warning" title="ແກ້ໄຂ" onclick="openEditDistrict(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button><?php endif; ?>
             </td>
             <td class="text-center">
-              <button class="btn btn-danger" title="ລຶບ" onclick="deleteDistrict(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button>
+              <?php if (edoc_can_basic_data()): ?><button class="btn btn-danger" title="ລຶບ" onclick="deleteDistrict(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button><?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>

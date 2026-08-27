@@ -4,7 +4,7 @@ session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: ../pages/login.php"); exit; }
 require '../connect.php';
 require_once '../edoc_auth.php';
-if (!edoc_can_basic_data()) { die('ທ່ານບໍ່ມີສິດເຂົ້າເຖິງຂໍ້ມູນພື້ນຖານ / No access'); }
+// Basic-data lists are viewable by all roles; edit/delete require can_basic_data (buttons wrapped below)
 
 $_current = 'list_edoc_doc_type.php';
 $alert = $_SESSION['alert'] ?? null;
@@ -53,7 +53,7 @@ require '../components/layout.php';
       </h1>
       <div class="action-buttons-top mb-3 mt-3 d-flex gap-2">
         <a href="../index.php" class="btn btn-danger" title="ປິດ"><i class="fas fa-power-off"></i></a>
-        <button class="btn btn-success" onclick="openAddDocType()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button>
+        <?php if (edoc_can_basic_data()): ?><button class="btn btn-success" onclick="openAddDocType()"><i class="fas fa-plus"></i> ເພີ່ມໃໝ່</button><?php endif; ?>
         <button class="btn btn-light border" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>
     </div>
@@ -85,8 +85,8 @@ require '../components/layout.php';
             <td><?= htmlspecialchars($row['name_lo']) ?></td>
             <td><?= htmlspecialchars($row['name_en'] ?? '-') ?></td>
             <td class="text-center"><?= $row['is_active'] ? '<span class="badge bg-success">ເປີດ</span>' : '<span class="badge bg-secondary">ປິດ</span>' ?></td>
-            <td class="text-center"><button class="btn btn-warning" onclick="openEditDocType(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button></td>
-            <td class="text-center"><button class="btn btn-danger" onclick="deleteDocType(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button></td>
+            <td class="text-center"><?php if (edoc_can_basic_data()): ?><button class="btn btn-warning" onclick="openEditDocType(<?= $row['id'] ?>)"><i class="fas fa-edit"></i></button><?php endif; ?></td>
+            <td class="text-center"><?php if (edoc_can_basic_data()): ?><button class="btn btn-danger" onclick="deleteDocType(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name_lo']) ?>')"><i class="fas fa-trash"></i></button><?php endif; ?></td>
           </tr>
           <?php endforeach; ?>
           <?php if (empty($types)): ?>
