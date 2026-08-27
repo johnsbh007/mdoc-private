@@ -171,9 +171,12 @@ function replacePhrase($p, $OLD, $NEW) {
   if ($idx === false) return false;
   return spliceAt($p, $idx, strlen($OLD), $NEW);
 }
-// fill the dots that follow $label in paragraph $p (splice at exact position)
+// fill the dots that follow $label in paragraph $p (splice at exact position).
+// Returns TRUE when the row is fillable (label found AND dots after it) — the
+// occurrence counter advances on fillable rows even when the value is empty, so
+// blank rows still consume their slot. Returns FALSE for heading lines that match
+// a PREFIX anchor but have no dots (they must NOT steal an occurrence slot).
 function fillDots($p, $label, $value) {
-  if ($value === '') return false;
   $full = '';
   foreach (wRuns($p) as $r) $full .= runText($r);
   $pos = strpos($full, $label);
@@ -184,8 +187,10 @@ function fillDots($p, $label, $value) {
   $e = $ws;
   while ($e < $len && $full[$e] === '.') $e++;
   if ($e > $ws) {
-    $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
-    spliceAt($p, $ws, $e - $ws, $ins);
+    if ($value !== '') {
+      $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
+      spliceAt($p, $ws, $e - $ws, $ins);
+    }
     return true;
   }
   return false;
