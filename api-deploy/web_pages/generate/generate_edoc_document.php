@@ -265,9 +265,9 @@ if ((int)$row['doc_type_id'] === 14) {
         // seller continuation — P12: id card, phone (1st occurrence)
         'PREFIXລົງວັນທີ' => [
             [['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
-             ['dots', 'ເບີໂທ', $row['phone']]],
+             ['dots', 'ເບີໂທ:', $row['phone']]],
             [['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['buyer_id_card']],
-             ['dots', 'ເບີໂທ', $row['buyer_phone']]],
+             ['dots', 'ເບີໂທ:', $row['buyer_phone']]],
         ],
         // buyer (real citizen record via buyer_id) — P19: name, age
         'ຂາຍໃຫ້ແກ່' => [
@@ -363,6 +363,10 @@ foreach ($paras as $p) {
     foreach ($r->childNodes as $c) {
       if ($c->nodeType === XML_ELEMENT_NODE && $c->localName === 't') {
         $c->textContent = preg_replace('/\s{2,}/', ' ', $c->textContent);
+        // collapse doubled commas that fillDots produced (template comma + fillDots ', ' suffix)
+        $c->textContent = preg_replace('/,\s*,/', ',', $c->textContent);
+        // tidy "ບ້ານ ," -> "ບ້ານ" when the value itself was empty
+        $c->textContent = preg_replace('/\s+,\s*$/u', '', $c->textContent);
       }
     }
   }
