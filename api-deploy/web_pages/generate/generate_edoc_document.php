@@ -11,7 +11,7 @@ $doc_id = (int)($_GET['doc_id'] ?? 0);
 if ($doc_id <= 0) { die('Missing doc_id'); }
 
 // ── load doc + citizen + residence data ──────────────────────────────
-$d = $conn->prepare("SELECT d.*, c.*, di.doc_type_id, v.name_lo AS village_name,
+$d = $conn->prepare("SELECT d.*, c.*, di.doc_type_id, di.id AS doc_item_id, v.name_lo AS village_name,
                             f.name_lo AS taseng_name, g.name_lo AS district_name,
                             h.name_lo AS province_name,
                             b.id AS buyer_citizen_id, b.title AS buyer_title, b.first_name AS buyer_first_name,
@@ -104,7 +104,9 @@ $today = date('d/m/Y');
 // ── open template copy (choose by doc type) ─────────────────────────
 $template = ($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
-    : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx';
+    : (((int)$row['doc_item_id'] === 5)
+        ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
+        : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx');
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -300,7 +302,67 @@ if ((int)$row['doc_type_id'] === 14) {
         'ທິດຕາເວັນອອກ' => [['dots', 'ທິດຕາເວັນອອກ ຕິດກັບ', $eavGet('border_east_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_east_meters')]],
         'ທິດຕາເວັນຕົກ' => [['dots', 'ທິດຕາເວັນຕົກ ຕິດກັບ', $eavGet('border_west_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_west_meters')]],
     ];
-} else {
+    } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 5) {
+        // ໃບຢັ້ງຢືນສາຍຍາດ (kinship certificate, item 5)
+        // Applicant block from the citizen record; relatives from EAV fields.
+        // Identical ຊື່/ຊື່ພໍ່/ຊື່ແມ່ rows appear twice (own family then spouse's family)
+        // -> occurrence-aware PREFIX lists, in document order.
+        $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+        $applicantName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+        $opsByAnchor = [
+            'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
+            // P7 applicant (line starts ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ...)
+            'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ' => [
+                ['phrase', 'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດນໍາໃຊ້ທີ່ດິນ', $applicantName],
+                ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])],
+                ['dots', 'ສັນຊາດ', $nationalityName],
+                ['dots', 'ອາຊີບ', $occupationName],
+                ['dots', 'ມີບັດປະຈຳຕົວເລກທີ', $row['id_card']],
+                ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])],
+                ['dots', 'ອອກໃຫ້ໂດຍ', $eavGet('kin_issued_by')],
+                ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['unit_no']],
+                ['dots', 'ບ້ານ', $row['village_name']],
+                ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+                ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+            ],
+            // P9 father (own) / P16 father (spouse's) — occurrence 0,1
+            'PREFIXຊື່ພໍ່' => [
+                [['dots', 'ຊື່ພໍ່', $eavGet('father_name')], ['dots', 'ອາຍຸ', $eavGet('father_age')], ['dots', 'ອາຊີບ', $eavGet('father_occupation')], ['dots', 'ບ້ານ', $eavGet('father_village')]],
+                [['dots', 'ຊື່ພໍ່', $eavGet('sp_father_name')], ['dots', 'ອາຍຸ', $eavGet('sp_father_age')], ['dots', 'ອາຊີບ', $eavGet('sp_father_occupation')], ['dots', 'ບ້ານ', $eavGet('sp_father_village')]],
+            ],
+            // P10 mother (own) / P17 mother (spouse's) — occurrence 0,1
+            'PREFIXຊື່ແມ່' => [
+                [['dots', 'ຊື່ແມ່', $eavGet('mother_name')], ['dots', 'ອາຍຸ', $eavGet('mother_age')], ['dots', 'ອາຊີບ', $eavGet('mother_occupation')], ['dots', 'ບ້ານ', $eavGet('mother_village')]],
+                [['dots', 'ຊື່ແມ່', $eavGet('sp_mother_name')], ['dots', 'ອາຍຸ', $eavGet('sp_mother_age')], ['dots', 'ອາຊີບ', $eavGet('sp_mother_occupation')], ['dots', 'ບ້ານ', $eavGet('sp_mother_village')]],
+            ],
+            // P11-13 siblings (own), P18-20 spouse rels, P22-24 children, P26-28 other rels — 12 occurrences
+            'PREFIXຊື່' => [
+                [['dots', 'ຊື່', $eavGet('sib1_name')], ['dots', 'ອາຍຸ', $eavGet('sib1_age')], ['dots', 'ອາຊີບ', $eavGet('sib1_occupation')], ['dots', 'ບ້ານ', $eavGet('sib1_village')]],
+                [['dots', 'ຊື່', $eavGet('sib2_name')], ['dots', 'ອາຍຸ', $eavGet('sib2_age')], ['dots', 'ອາຊີບ', $eavGet('sib2_occupation')], ['dots', 'ບ້ານ', $eavGet('sib2_village')]],
+                [['dots', 'ຊື່', $eavGet('sib3_name')], ['dots', 'ອາຍຸ', $eavGet('sib3_age')], ['dots', 'ອາຊີບ', $eavGet('sib3_occupation')], ['dots', 'ບ້ານ', $eavGet('sib3_village')]],
+                [['dots', 'ຊື່', $eavGet('spr1_name')], ['dots', 'ອາຍຸ', $eavGet('spr1_age')], ['dots', 'ອາຊີບ', $eavGet('spr1_occupation')], ['dots', 'ບ້ານ', $eavGet('spr1_village')]],
+                [['dots', 'ຊື່', $eavGet('spr2_name')], ['dots', 'ອາຍຸ', $eavGet('spr2_age')], ['dots', 'ອາຊີບ', $eavGet('spr2_occupation')], ['dots', 'ບ້ານ', $eavGet('spr2_village')]],
+                [['dots', 'ຊື່', $eavGet('spr3_name')], ['dots', 'ອາຍຸ', $eavGet('spr3_age')], ['dots', 'ອາຊີບ', $eavGet('spr3_occupation')], ['dots', 'ບ້ານ', $eavGet('spr3_village')]],
+                [['dots', 'ຊື່', $eavGet('child1_name')], ['dots', 'ອາຍຸ', $eavGet('child1_age')], ['dots', 'ອາຊີບ', $eavGet('child1_occupation')], ['dots', 'ບ້ານ', $eavGet('child1_village')]],
+                [['dots', 'ຊື່', $eavGet('child2_name')], ['dots', 'ອາຍຸ', $eavGet('child2_age')], ['dots', 'ອາຊີບ', $eavGet('child2_occupation')], ['dots', 'ບ້ານ', $eavGet('child2_village')]],
+                [['dots', 'ຊື່', $eavGet('child3_name')], ['dots', 'ອາຍຸ', $eavGet('child3_age')], ['dots', 'ອາຊີບ', $eavGet('child3_occupation')], ['dots', 'ບ້ານ', $eavGet('child3_village')]],
+                [['dots', 'ຊື່', $eavGet('rel1_name')], ['dots', 'ອາຍຸ', $eavGet('rel1_age')], ['dots', 'ອາຊີບ', $eavGet('rel1_occupation')], ['dots', 'ບ້ານ', $eavGet('rel1_village')]],
+                [['dots', 'ຊື່', $eavGet('rel2_name')], ['dots', 'ອາຍຸ', $eavGet('rel2_age')], ['dots', 'ອາຊີບ', $eavGet('rel2_occupation')], ['dots', 'ບ້ານ', $eavGet('rel2_village')]],
+                [['dots', 'ຊື່', $eavGet('rel3_name')], ['dots', 'ອາຍຸ', $eavGet('rel3_age')], ['dots', 'ອາຊີບ', $eavGet('rel3_occupation')], ['dots', 'ບ້ານ', $eavGet('rel3_village')]],
+            ],
+            // P14 spouse
+            'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ' => [
+                ['dots', 'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ', $eavGet('spouse_name')],
+                ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $eavGet('spouse_dob')],
+                ['dots', 'ສັນຊາດ', $eavGet('spouse_nationality')],
+                ['dots', 'ອາຊີບ', $eavGet('spouse_occupation')],
+                ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $eavGet('spouse_unit')],
+                ['dots', 'ບ້ານ', $eavGet('spouse_village')],
+                ['dots', 'ເມືອງ', $eavGet('spouse_district')],
+                ['dots', 'ແຂວງ', $eavGet('spouse_province')],
+            ],
+        ];
+    } else {
     // residence (type 1) — original fill table
     $opsByAnchor = [
         '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
@@ -380,8 +442,8 @@ $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
-$fname = (($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_') . ($row['doc_no'] ?? $doc_id) . '.docx';
-$ascii = (($row['doc_type_id'] == 14) ? 'land_sale_' : 'residence_cert_') . ($row['doc_no'] ?? $doc_id) . '.docx';
+$fname = (($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_' : ((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
+$ascii = (($row['doc_type_id'] == 14) ? 'land_sale_' : ((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : 'residence_cert_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {

@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $docType = $conn->prepare("SELECT doc_type_id FROM edoc_doc_item WHERE id=?");
         $docType->execute([$doc_item_id]);
         $doc_type_id = (int)$docType->fetchColumn();
-        if ($doc_type_id === 1) {
+        if ($doc_type_id === 1 && $doc_item_id == 1) {
             $fieldset = $conn->prepare("SELECT id, field_name FROM edoc_doc_field WHERE doc_type_id=1");
             $fieldset->execute();
             $vals = [];

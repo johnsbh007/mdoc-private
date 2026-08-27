@@ -15,9 +15,15 @@ try {
     $sf->execute([$doc_item_id]);
     if ($r = $sf->fetchColumn()) { $price = $r; }
 
-    $fld = $conn->prepare("SELECT f.id, f.field_label, f.field_type FROM edoc_doc_field f JOIN edoc_doc_item di ON f.doc_type_id=di.doc_type_id WHERE di.id=? AND f.is_active=1 ORDER BY f.sort_order ASC");
+    // item-specific fields first (doc_item_id = item), else generic for the doc_type (doc_item_id IS NULL)
+    $fld = $conn->prepare("SELECT f.id, f.field_label, f.field_type FROM edoc_doc_field f JOIN edoc_doc_item di ON f.doc_type_id=di.doc_type_id WHERE di.id=? AND f.is_active=1 AND f.doc_item_id=di.id ORDER BY f.sort_order ASC");
     $fld->execute([$doc_item_id]);
     $fields = $fld->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($fields)) {
+        $fld = $conn->prepare("SELECT f.id, f.field_label, f.field_type FROM edoc_doc_field f JOIN edoc_doc_item di ON f.doc_type_id=di.doc_type_id WHERE di.id=? AND f.is_active=1 AND f.doc_item_id IS NULL ORDER BY f.sort_order ASC");
+        $fld->execute([$doc_item_id]);
+        $fields = $fld->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     echo json_encode(['status' => 'success', 'data' => ['price' => $price, 'fields' => $fields]]);
 } catch (PDOException $e) { echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); }

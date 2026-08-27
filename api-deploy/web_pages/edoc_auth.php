@@ -35,10 +35,11 @@ function edoc_can_manage_users() { return edoc_can('can_manage_users'); }
  * generated .docx would use the wrong template. Add item ids here as they are
  * implemented end-to-end. Currently implemented (verified live):
  *   1  = ໃບຢັ້ງຢືນທີ່ຢູ່ (residence certificate, doc_type 1, template 32)
+ *   5  = ໃບຢັ້ງຢືນສາຍຍາດ (kinship certificate, doc_type 1, template 01-05)
  *   52 = ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase, doc_type 14, template 31)
  */
 function edoc_item_implemented($docItemId) {
-    return in_array((int)$docItemId, [1, 52], true);
+    return in_array((int)$docItemId, [1, 5, 52], true);
 }
 
 /**
