@@ -54,6 +54,15 @@ $fields = [
 ];
 
 $conn->beginTransaction();
+// doc_type 14 (ຊື້-ຂາຍ) must be active for the land-sale item to appear in the picker
+$conn->prepare("UPDATE edoc_doc_type SET is_active=1 WHERE id=14")->execute();
+// land-sale item 52 (idempotent by doc_item_code)
+$st = $conn->prepare("SELECT id FROM edoc_doc_item WHERE doc_type_id=14 AND doc_item_code='52'");
+$st->execute();
+if (!$st->fetchColumn()) {
+    $conn->prepare("INSERT INTO edoc_doc_item (doc_type_id, doc_item_code, name_lo, name_en, unit, price, is_active)
+                    VALUES (14, '52', 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ', 'Land Sell-Purchase Statement', 'ກີບ/ເລື່ອງ', 200000.00, 1)")->execute();
+}
 $inserted = 0; $sort = 1;
 foreach ($fields as [$name, $label, $type]) {
     // unique by (doc_type_id, field_name)
