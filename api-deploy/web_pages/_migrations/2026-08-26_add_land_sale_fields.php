@@ -1,9 +1,10 @@
 <?php
 /**
- * Migration: define form fields for doc_type 12 — ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase letter)
- * Item 31 (200,000 LAK). Template: Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx
- *
- * The seller = the applicant (citizen record); only letter-specific fields are stored
+ * Migration: define form fields for doc_type 14 — ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase letter)
+ * Item 52 (200,000 LAK). Template: Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx
+ * NOTE: the template filename "31" is a Doc_files catalog number — the item id is 52,
+ * under doc_type 14 (ຊື້-ຂາຍ). Item id 31 is ໄກ່ເກ່ຍຂໍ້ຂັດແຍ່ງ and is NOT this form.
+ * seller = the applicant (citizen record); only letter-specific fields are stored
  * in edoc_form_data (EAV) keyed by these field ids. Idempotent (INSERT IGNORE by field_name).
  */
 
@@ -56,15 +57,15 @@ $conn->beginTransaction();
 $inserted = 0; $sort = 1;
 foreach ($fields as [$name, $label, $type]) {
     // unique by (doc_type_id, field_name)
-    $st = $conn->prepare("SELECT id FROM edoc_doc_field WHERE doc_type_id=12 AND field_name=?");
+    $st = $conn->prepare("SELECT id FROM edoc_doc_field WHERE doc_type_id=14 AND field_name=?");
     $st->execute([$name]);
     if (!$st->fetchColumn()) {
         $conn->prepare("INSERT INTO edoc_doc_field (doc_type_id, field_name, field_label, field_type, is_active, sort_order)
-                        VALUES (12, ?, ?, ?, 1, ?)")->execute([$name, $label, $type, $sort]);
+                        VALUES (14, ?, ?, ?, 1, ?)")->execute([$name, $label, $type, $sort]);
         $inserted++;
     }
     $sort++;
 }
 $conn->commit();
-echo "doc_type 12 fields: $inserted inserted (" . count($fields) . " defined, idempotent)\n";
+echo "doc_type 14 fields: $inserted inserted (" . count($fields) . " defined, idempotent)\n";
 echo "DONE\n";

@@ -90,7 +90,7 @@ $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ?
 $today = date('d/m/Y');
 
 // ── open template copy (choose by doc type) ─────────────────────────
-$template = ($row['doc_type_id'] == 12)
+$template = ($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
     : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx';
 if (!file_exists($template)) { die('Template not found'); }
@@ -202,7 +202,7 @@ $nameTitle = ($title !== '') ? $title : 'ທ້າວ ຫຼື ນາງ';
 // Type 12 = ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase letter). The applicant is the
 // SELLER (citizen record); witnesses/land/borders/buyer come from the EAV fields.
 $opsByAnchor = [];
-if ((int)$row['doc_type_id'] === 12) {
+if ((int)$row['doc_type_id'] === 14) {
     $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
     $opsByAnchor = [
             '/ຄປຕ' => [['dots', 'ເລກທີ່', $row['doc_no']]],
@@ -336,8 +336,8 @@ $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
-$fname = (($row['doc_type_id'] == 12) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_') . ($row['doc_no'] ?? $doc_id) . '.docx';
-$ascii = (($row['doc_type_id'] == 12) ? 'land_sale_' : 'residence_cert_') . ($row['doc_no'] ?? $doc_id) . '.docx';
+$fname = (($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_') . ($row['doc_no'] ?? $doc_id) . '.docx';
+$ascii = (($row['doc_type_id'] == 14) ? 'land_sale_' : 'residence_cert_') . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {

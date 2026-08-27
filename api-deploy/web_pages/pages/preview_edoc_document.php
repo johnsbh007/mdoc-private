@@ -23,12 +23,12 @@ $d = $conn->prepare("SELECT d.*, c.*, v.name_lo AS village_name, f.name_lo AS ta
 $d->execute([$doc_id]);
 $row = $d->fetch(PDO::FETCH_ASSOC);
 if (!$row) { die('Document not found'); }
-if (!in_array((int)$row['doc_type_id'], [1, 12], true)) { die('Preview available for Residence Certificate / Land Sale letter only'); }
+if (!in_array((int)$row['doc_type_id'], [1, 14], true)) { die('Preview available for Residence Certificate / Land Sale letter only'); }
 
-// ── type 12 (land sell-purchase letter): render a data-summary preview ──
+// ── type 14 (land sell-purchase letter): render a data-summary preview ──
 // The authoritative output is the generated .docx; this preview lets the officer
 // verify the captured fields before generating. Rendered from the EAV values.
-if ((int)$row['doc_type_id'] === 12) {
+if ((int)$row['doc_type_id'] === 14) {
     $eav = [];
     $ev = $conn->prepare("SELECT f.field_label, fd.field_value
                           FROM edoc_form_data fd

@@ -400,7 +400,7 @@ require '../components/layout.php';
         <?php if (edoc_can_approve() && in_array($status, ['PENDING_APPROVAL','ISSUED'], true)): ?>
           <button class="btn btn-danger btn-act" onclick="doAction('reject')"><i class="fas fa-times-circle"></i> ປະຕິເສດ (Reject)</button>
         <?php endif; ?>
-        <?php if (in_array($doc['doc_type_id'], [1, 12], true) && in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
+        <?php if (in_array($doc['doc_type_id'], [1, 14], true) && in_array($status, ['PENDING_APPROVAL','ISSUED','PENDING_PAYMENT','NEEDS_REVISION'], true)): ?>
           <a class="btn btn-outline-secondary btn-act" target="_blank" href="preview_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-eye"></i> ສະແດງ (Preview)</a>
         <?php endif; ?>
         <?php if ($status === 'NEEDS_REVISION'): ?>
