@@ -423,7 +423,7 @@ if ((int)$row['doc_type_id'] === 14) {
                 ['dots', 'ແຂວງ', $eavGet('spouse_province')],
             ],
         ];
-    } elseif ((int)$row['doc_type_id'] === 6) {
+    } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 28) {
     // ສັນຍາກູ້ຢືມເງິນ (loan contract, doc_type 6, item 28)
     // Party A = applicant (lender ຝ່າຍ ກໍ); Party B = borrower citizen (buyer_id).
     // Two identical "ຂ້າພະເຈົ້າ ຊື່:" lines (P5 = A, P7 = B) -> occurrence-aware.
