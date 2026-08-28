@@ -105,7 +105,7 @@ $today = date('d/m/Y');
 $template = ($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
     : ($row['doc_type_id'] == 6
-        ? (((int)$row['doc_item_id'] === 31)
+        ? (((int)$row['doc_item_id'] === 53)
             ? '/var/www/html/edoc/Doc_files/06-31-ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ.docx'
             : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx')
         : (((int)$row['doc_item_id'] === 5)
@@ -496,7 +496,7 @@ if ((int)$row['doc_type_id'] === 14) {
                                     ['dots', 'ຈຳນວນ:', $eavGet('loan_interest_pct')],
                                 ],
                             ];
-                    } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 31) {
+                    } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 53) {
                     // ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ (land sale contract, doc_type 6, item 31)
                     // Seller = applicant citizen; Buyer = second citizen (buyer_id).
                     // Seller/buyer continuation lines are textually identical (ເຊື້ອຊາດ...,
@@ -678,11 +678,11 @@ $zip->close();
 // ── stream as download, or store to edoc_file_store (save=1) ───────
 $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
         : ($row['doc_type_id'] == 6
-            ? ((int)$row['doc_item_id'] === 31 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_' : 'ສັນຍາກູ້ຢືມເງິນ_')
+            ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_' : 'ສັນຍາກູ້ຢືມເງິນ_')
             : ((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
-            ? ((int)$row['doc_item_id'] === 31 ? 'land_sale_contract_' : 'loan_contract_')
+            ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_' : 'loan_contract_')
             : ((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : 'residence_cert_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);

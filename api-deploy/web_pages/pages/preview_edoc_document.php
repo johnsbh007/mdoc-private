@@ -161,7 +161,7 @@ if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 28) {
 }
 
 // ── item 31 (land sale contract ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ): data-summary preview ──
-if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 31) {
+if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 53) {
     $buyerName = '';
     if (!empty($row['buyer_id'])) {
         $bs = $conn->prepare("SELECT title, first_name, last_name FROM edoc_citizen WHERE id=?");
