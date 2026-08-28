@@ -243,7 +243,7 @@ $tab1Label = '1. ຂໍ້ມູນ (Person)';
 $tab2Label = '2. ຂໍ້ມູນ (Party 2)';
 $tab3Label = '3. ຂໍ້ມູນເອກະສານ (Document)';
 $party2Label = 'ຜູ້ຊື້ (Buyer)';
-if ($item['id'] == 52) { // land-sale
+if ($item['id'] == 52 || $item['id'] == 31) { // land-sale certificate / land sale contract
     $tab1Label = '1. ຂໍ້ມູນຜູ້ຂາຍ (Seller)';
     $tab2Label = '2. ຂໍ້ມູນຜູ້ຊື້ (Buyer)';
     $tab3Label = '3. ຂໍ້ມູນອື່ນໆ (Other)';
@@ -263,7 +263,7 @@ if ($item['id'] == 52) { // land-sale
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-buyer" data-bs-toggle="tab" data-bs-target="#p-buyer" type="button" role="tab"><?= $tab2Label ?></button>
         </li>
-<?php if (!in_array($item['id'], [52, 28], true)): /* hide the party-2 tab for single-party items */ ?>
+<?php if (!in_array($item['id'], [52, 28, 31], true)): /* hide the party-2 tab for single-party items */ ?>
         <style>#tab-buyer { display:none !important; } #p-buyer { display:none !important; }</style>
 <?php endif; ?>
         <li class="nav-item" role="presentation">

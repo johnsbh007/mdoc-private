@@ -160,6 +160,50 @@ if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 28) {
     <?php
 }
 
+// ── item 31 (land sale contract ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ): data-summary preview ──
+if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 31) {
+    $buyerName = '';
+    if (!empty($row['buyer_id'])) {
+        $bs = $conn->prepare("SELECT title, first_name, last_name FROM edoc_citizen WHERE id=?");
+        $bs->execute([$row['buyer_id']]);
+        $bc = $bs->fetch(PDO::FETCH_ASSOC);
+        if ($bc) $buyerName = trim(($bc['title'] ?? '') . ' ' . ($bc['first_name'] ?? '') . ' ' . ($bc['last_name'] ?? ''));
+    }
+    $eav = [];
+    $ev = $conn->prepare("SELECT f.field_label, fd.field_value
+                          FROM edoc_form_data fd
+                          JOIN edoc_doc_field f ON f.id = fd.field_id
+                          WHERE fd.doc_id = ? ORDER BY f.sort_order");
+    $ev->execute([$doc_id]);
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { if ($r['field_value'] !== '' && $r['field_value'] !== null) { $eav[] = $r; } }
+    require '../components/layout.php';
+    ?>
+    <style>
+    .ls-card { max-width:720px; margin:0 auto; background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.07); padding:22px 26px; }
+    .ls-card h6 { border-bottom:2px solid #044482; padding-bottom:8px; margin-bottom:14px; }
+    .ls-row { display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid #eef2f7; font-size:.92rem; }
+    .ls-row .k { color:#64748b; flex:0 0 45%; }
+    .ls-row .v { font-weight:600; text-align:right; }
+    .ls-empty { color:#94a3b8; font-style:italic; }
+    </style>
+    <div class="container-fluid py-3">
+      <div class="ls-card">
+        <h6><i class="fas fa-handshake text-primary"></i> ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ — ສະຫຼຸບຂໍ້ມູນ (Land sale contract — data summary)</h6>
+        <div class="ls-row"><span class="k">ເລກທີ່ຄຳຮ້ອງ / Doc no</span><span class="v"><?= htmlspecialchars($row['doc_no']) ?></span></div>
+        <div class="ls-row"><span class="k">ຜູ້ຂາຍ (Seller)</span><span class="v"><?= htmlspecialchars(trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''))) ?></span></div>
+        <div class="ls-row"><span class="k">ຜູ້ຊື້ (Buyer)</span><span class="v"><?= htmlspecialchars($buyerName) ?></span></div>
+        <?php if (!$eav): ?>
+          <div class="ls-empty mt-3">ຍັງບໍ່ມີຂໍ້ມູນສັນຍາ (No contract terms captured yet)</div>
+        <?php else: foreach ($eav as $f): ?>
+          <div class="ls-row"><span class="k"><?= htmlspecialchars($f['field_label']) ?></span><span class="v"><?= htmlspecialchars($f['field_value']) ?></span></div>
+        <?php endforeach; endif; ?>
+      </div>
+    </div>
+    <?php require '../components/layout_footer.php'; ?>
+    <?php exit; ?>
+    <?php
+}
+
 $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);

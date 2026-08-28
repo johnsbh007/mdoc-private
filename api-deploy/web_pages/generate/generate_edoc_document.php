@@ -105,7 +105,9 @@ $today = date('d/m/Y');
 $template = ($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
     : ($row['doc_type_id'] == 6
-        ? '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx'
+        ? (((int)$row['doc_item_id'] === 31)
+            ? '/var/www/html/edoc/Doc_files/06-31-ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ.docx'
+            : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx')
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
             : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'));
@@ -198,8 +200,8 @@ function fillDots($p, $label, $value) {
   return false;
 }
 
-// fill a span of dots (and '/' separators) that follow $label — used for the
-// ".........../........../..........." date placeholder in the loan contract.
+// fill a span of dots (and '/' separators, and '…' ellipsis) that follow $label —
+// used for the ".........../........../..........." date / amount placeholders.
 // Returns TRUE when the row is fillable (label found AND dots after it).
 function fillDotSpan($p, $label, $value) {
   $full = '';
@@ -210,7 +212,34 @@ function fillDotSpan($p, $label, $value) {
   $ws = $pos + strlen($label);
   while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
-  while ($e < $len && ($full[$e] === '.' || $full[$e] === '/')) $e++;
+  while ($e < $len && ($full[$e] === '.' || $full[$e] === '/' || $full[$e] === '…')) $e++;
+  if ($e > $ws) {
+    if ($value !== '') {
+      $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
+      spliceAt($p, $ws, $e - $ws, $ins);
+    }
+    return true;
+  }
+  return false;
+}
+
+// fill dots after the Nth occurrence of $label in paragraph $p (1-based $n).
+// Used when a label repeats inside one paragraph (e.g. ເປັນຕົວໜັງສື x2).
+function fillDotsN($p, $label, $value, $n) {
+  $full = '';
+  foreach (wRuns($p) as $r) $full .= runText($r);
+  $pos = 0; $found = 0;
+  while (($pos = strpos($full, $label, $pos)) !== false) {
+    $found++;
+    if ($found === $n) break;
+    $pos += strlen($label);
+  }
+  if ($found < $n) return false;
+  $len = strlen($full);
+  $ws = $pos + strlen($label);
+  while ($ws < $len && $full[$ws] === ' ') $ws++;
+  $e = $ws;
+  while ($e < $len && $full[$e] === '.') $e++;
   if ($e > $ws) {
     if ($value !== '') {
       $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
@@ -464,10 +493,103 @@ if ((int)$row['doc_type_id'] === 14) {
         ],
         // P13 interest rate
                 'ດອກເບ້ຍຈາກຝ່າຍ' => [
-                    ['dots', 'ຈຳນວນ:', $eavGet('loan_interest_pct')],
-                ],
-            ];
-    } else {
+                                    ['dots', 'ຈຳນວນ:', $eavGet('loan_interest_pct')],
+                                ],
+                            ];
+                    } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 31) {
+                    // ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ (land sale contract, doc_type 6, item 31)
+                    // Seller = applicant citizen; Buyer = second citizen (buyer_id).
+                    // Seller/buyer continuation lines are textually identical (ເຊື້ອຊາດ...,
+                    // ຂື້ນສຳມະໂນຄົວ..., ລົງວັນທີ...) -> occurrence-aware PREFIX.
+                    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+                    $sellerName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+                    $sellerAge  = $row['dob'] ? floor((time() - strtotime($row['dob'])) / 31536000) : '';
+                    $buyerName = trim(($row['buyer_title'] ?? '') . ' ' . ($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
+                    $buyerAge  = $row['buyer_dob'] ? floor((time() - strtotime($row['buyer_dob'])) / 31536000) : '';
+                    $bnNat = resolveName($conn, 'edoc_country', $row['buyer_nationality'] ?? '');
+                    $bnOcc = resolveName($conn, 'edoc_occupation', $row['buyer_occupation'] ?? '');
+                    $opsByAnchor = [
+                        // P6 agreement date (……......../…….....……...)
+                        'ຄັ້ງວັນທີ' => [['dotspan', 'ຄັ້ງວັນທີ', $today]],
+                        // P8 seller name line (applicant) / P13 buyer name line
+                        'PREFIXຂ້າພະເຈົ້າ ຜູ້ຂາຍ:' => [
+                            [['dots', 'ຜູ້ຂາຍ:', $sellerName], ['dots', 'ອາຍຸ', $sellerAge], ['dots', 'ອາຊີບ', $occupationName]],
+                        ],
+                        'PREFIXຂ້າພະເຈົ້າ ຜູ້ຊື້:' => [
+                            [['dots', 'ຜູ້ຊື້:', $buyerName], ['dots', 'ອາຍຸ', $buyerAge], ['dots', 'ອາຊີບ', $bnOcc]],
+                        ],
+                        // P9 seller profile continuation / P14 buyer profile continuation (identical text)
+                        'PREFIXເຊື້ອຊາດ' => [
+                            [['dots', 'ເຊື້ອຊາດ', resolveName($conn, 'edoc_country', $row['origin'] ?? '')],
+                             ['dots', 'ສັນຊາດ', $nationalityName],
+                             ['dots', 'ສາສະໜາ', resolveName($conn, 'edoc_religion', $row['religion'] ?? '')],
+                             ['dots', 'ຊົນເຜົ່າ', resolveName($conn, 'edoc_ethnicity', $row['ethnicity'] ?? '')],
+                             ['dots', 'ປັດຈຸບັນຢູ່ເຮືອນເລກທີ', $row['house_no']],
+                             ['dots', 'ໜ່ວຍ', $row['unit_no']],
+                             ['dots', 'ບ້ານ:', $row['village_name']],
+                             ['dots', 'ເມືອງ:', $row['district_name'] ?? ''],
+                             ['dots', 'ແຂວງ,/ນະຄອນ', $row['province_name'] ?? '']],
+                            [['dots', 'ເຊື້ອຊາດ', resolveName($conn, 'edoc_country', $row['buyer_origin'] ?? '')],
+                             ['dots', 'ສັນຊາດ', $bnNat],
+                             ['dots', 'ສາສະໜາ', resolveName($conn, 'edoc_religion', $row['buyer_religion'] ?? '')],
+                             ['dots', 'ຊົນເຜົ່າ', resolveName($conn, 'edoc_ethnicity', $row['buyer_ethnicity'] ?? '')],
+                             ['dots', 'ປັດຈຸບັນຢູ່ເຮືອນເລກທີ', $row['buyer_house_no'] ?? ''],
+                             ['dots', 'ໜ່ວຍ', $row['buyer_unit_no'] ?? ''],
+                             ['dots', 'ບ້ານ:', $row['buyer_village_name'] ?? ''],
+                             ['dots', 'ເມືອງ:', $row['buyer_district_name'] ?? ''],
+                             ['dots', 'ແຂວງ,/ນະຄອນ', $row['buyer_province_name'] ?? '']],
+                        ],
+                        // P10 seller family book/id / P15 buyer family book/id (identical text)
+                        'PREFIXຂື້ນສຳມະໂນຄົວເລກທີ' => [
+                            [['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('seller_family_book_no')],
+                             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('seller_family_book_date'))],
+                             ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']]],
+                            [['dots', 'ຂື້ນສຳມະໂນຄົວເລກທີ', $eavGet('buyer_family_book_no')],
+                             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('buyer_family_book_date'))],
+                             ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['buyer_id_card'] ?? '']],
+                        ],
+                        // P11 seller id date/phone / P16 buyer id date/phone (identical text)
+                        'PREFIXລົງວັນທີ' => [
+                            [['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])], ['dots', 'ເບີໂທລະສັບ', $row['phone']]],
+                            [['dots', 'ລົງວັນທີ', fmtDate($row['buyer_id_card_issue_date'] ?? '')], ['dots', 'ເບີໂທລະສັບ', $row['buyer_phone'] ?? '']],
+                        ],
+                        // P18 ມາດຕາ 1 land details
+                        'PREFIXມາດຕາ 1' => [
+                            ['dotspan', 'ຕັ້ງຢູ່ບ້ານ', $eavGet('land_village')],
+                            ['dotspan', 'ເມືອງ', $eavGet('land_district')],
+                            ['dotspan', 'ແຂວງ', $eavGet('land_province')],
+                            ['dotspan', 'ເນື້ອທີ່ດິນ', $eavGet('land_area_m2')],
+                            ['dotspan', 'ໃບຕາເລກທີ', $eavGet('land_deed_no')],
+                            ['dotspan', 'ແຜນຕາດິນເລກທີ', $eavGet('land_map_no')],
+                            ['dotspan', 'ອອກຊື່', $eavGet('land_owner_name')],
+                            ['dotspan', 'ລົງວັນທີ', fmtDate($eavGet('land_owner_date'))],
+                        ],
+                        // P20 ມາດຕາ 2 price line (total + paid)
+                        'PREFIXລວມລາຄາ' => [
+                            ['dotspan', 'ລວມລາຄາ', $eavGet('total_price')],
+                            ['dots', 'ເປັນຕົວໜັງສື', $eavGet('total_price_words')],
+                            ['dotspan', 'ແລ້ວຈຳນວນ', $eavGet('paid_amount')],
+                        ],
+                        // P21 ມາດຕາ 2 payment line (paid words / remaining / deadline / after-sale / days)
+                        'ສ່ວນຈຳນວນທີ່ຍັງເຫຼືອ' => [
+                            ['dots', 'ເປັນຕົວໜັງສື', $eavGet('paid_amount_words')],
+                            ['dotspan', 'ສ່ວນຈຳນວນທີ່ຍັງເຫຼືອ', $eavGet('remaining_amount')],
+                            ['dots2', 'ເປັນຕົວໜັງສື', $eavGet('remaining_words')],
+                            ['dotspan', 'ພາຍຫຼັງ', $eavGet('deadline_after')],
+                            ['dotspan', 'ອອກເປັນຊື່', $eavGet('after_sale_name')],
+                            ['dotspan', 'ກາຍ', $eavGet('deadline_days')],
+                        ],
+                        // P24 ມາດຕາ 3 penalty
+                        'ຄ່າປັບໃໝ' => [
+                            ['dotspan', 'ເປັນຈຳນວນ', $eavGet('penalty_amount')],
+                        ],
+                        // P39 signature names (seller / buyer)
+                        'ຊື່ແຈ້ງ' => [
+                            ['dots', 'ຊື່ແຈ້ງ', $sellerName],
+                            ['dots2', 'ຊື່ແຈ້ງ', $buyerName],
+                        ],
+                    ];
+                    } else {
      // residence (type 1) — original fill table
      $opsByAnchor = [
         '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
@@ -508,6 +630,7 @@ foreach ($paras as $p) {
     foreach ($opsList as $op) {
       if ($op[0] === 'dots')   { if (fillDots($p, $op[1], $op[2])) $anyFilled = true; }
       else if ($op[0] === 'dotspan') { if (fillDotSpan($p, $op[1], $op[2])) $anyFilled = true; }
+      else if ($op[0] === 'dots2') { if (fillDotsN($p, $op[1], $op[2], 2)) $anyFilled = true; }
       else if ($op[0] === 'phrase') { replacePhrase($p, $op[1], $op[2]); $anyFilled = true; }
       else if ($op[0] === 'name') fillNameLine($p, $op[1], $op[2]);
     }
@@ -554,10 +677,12 @@ $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
 $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
-        : ($row['doc_type_id'] == 6 ? 'ສັນຍາກູ້ຢືມເງິນ_'
+        : ($row['doc_type_id'] == 6
+            ? ((int)$row['doc_item_id'] === 31 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_' : 'ສັນຍາກູ້ຢືມເງິນ_')
             : ((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
-        : ($row['doc_type_id'] == 6 ? 'loan_contract_'
+        : ($row['doc_type_id'] == 6
+            ? ((int)$row['doc_item_id'] === 31 ? 'land_sale_contract_' : 'loan_contract_')
             : ((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : 'residence_cert_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
