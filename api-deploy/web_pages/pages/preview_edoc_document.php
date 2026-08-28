@@ -204,6 +204,33 @@ if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 53) {
     <?php
 }
 
+// ── item 8 (biography ຊີວະປະຫວັດທົ່ວໄປ, doc_type 1): data-summary preview ──
+if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 8) {
+    $bio = [];
+    $ev = $conn->prepare("SELECT f.field_name, fd.field_value
+                          FROM edoc_form_data fd
+                          JOIN edoc_doc_field f ON f.id = fd.field_id
+                          WHERE fd.doc_id = ?");
+    $ev->execute([$doc_id]);
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { if ($r['field_value'] !== '' && $r['field_value'] !== null) { $bio[$r['field_name']] = $r['field_value']; } }
+    $applicant = trim(($row['title'] ?? '') . ' ' . ($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+    ?>
+    <div class="container-fluid"><div class="card"><div class="card-body">
+        <h5 class="mb-3">ຊີວະປະຫວັດທົ່ວໄປ (Biography)</h5>
+        <div class="ls-row"><span class="k">ຜູ້ຍື່ນ (Applicant)</span><span class="v"><?= htmlspecialchars($applicant) ?></span></div>
+        <div class="ls-row"><span class="k">ພໍ່ (Father)</span><span class="v"><?= htmlspecialchars($bio['bio_father_name'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ແມ່ (Mother)</span><span class="v"><?= htmlspecialchars($bio['bio_mother_name'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ຜົວ/ເມຍ (Spouse)</span><span class="v"><?= htmlspecialchars($bio['bio_spouse_name'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ອາຊີບ (Workplace)</span><span class="v"><?= htmlspecialchars($bio['bio_workplace'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ໜ້າທີ່ (Position)</span><span class="v"><?= htmlspecialchars($bio['bio_position'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ລູກ (Children)</span><span class="v"><?= htmlspecialchars($bio['bio_children_count'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ສຸຂະພາບ (Health)</span><span class="v"><?= htmlspecialchars($bio['bio_health'] ?? '') ?></span></div>
+    </div></div></div>
+    <?php require '../components/layout_footer.php'; ?>
+    <?php exit; ?>
+    <?php
+}
+
 $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);

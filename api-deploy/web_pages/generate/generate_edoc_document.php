@@ -110,7 +110,9 @@ $template = ($row['doc_type_id'] == 14)
             : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx')
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
-            : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'));
+            : (((int)$row['doc_item_id'] === 8)
+                ? '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx'
+                : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -598,14 +600,113 @@ if ((int)$row['doc_type_id'] === 14) {
                             ['dotspan', 'ເປັນຈຳນວນ', $eavGet('penalty_amount')],
                         ],
                         // P39 signature names (seller / buyer)
-                        'ຊື່ແຈ້ງ' => [
-                            ['dots', 'ຊື່ແຈ້ງ:', $sellerName],
-                            ['dots2', 'ຊື່ແຈ້ງ:', $buyerName],
+                            'ຊື່ແຈ້ງ' => [
+                                ['dots', 'ຊື່ແຈ້ງ:', $sellerName],
+                                ['dots2', 'ຊື່ແຈ້ງ:', $buyerName],
+                            ],
+                        ];
+                        } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8) {
+                        // ຊີວະປະຫວັດທົ່ວໄປ (biography / CV form, doc_type 1, item 8)
+                        // Applicant profile from citizen record; family/spouse/work/education from EAV.
+                        // Free-text dotted lines and internal tables (history/training/awards/discipline/
+                        // children) are left blank for handwriting. Identical ຊື່ ແລະ ນາມສະກຸນ /
+                        // ວັນ, ເດືອນ, ປີເກີດ / ອາຊີບປະຈຸບັນ / ບ້ານຢູ່ປະຈຸບັນ rows -> occurrence-aware.
+                        $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+                        $bioName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+                        $d = $row['dob'] ? date('d', strtotime($row['dob'])) : '';
+                        $m = $row['dob'] ? date('m', strtotime($row['dob'])) : '';
+                        $y = $row['dob'] ? date('Y', strtotime($row['dob'])) : '';
+                        $opsByAnchor = [
+                        // P11 self name / P252 father / P259 mother / P270 spouse / P326 sp father / P330 sp mother
+                        'PREFIXຊື່ ແລະ ນາມສະກຸນ' => [
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນ', $bioName]],
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນ ພໍ່', $eavGet('bio_father_name')]],
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນຂອງ ແມ່', $eavGet('bio_mother_name')]],
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນຂອງ ຜົວ ຫຼື ເມຍ', $eavGet('bio_spouse_name')]],
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນ ພໍ່ ຂອງ ຜົວ ຫຼື ເມຍ', $eavGet('bio_sp_father_name')]],
+                        [['dots', 'ຊື່ ແລະ ນາມສະກຸນ ແມ່ຂອງ ຜົວ ຫຼື ເມຍ', $eavGet('bio_sp_mother_name')]],
                         ],
-                    ];
-                    } else {
-     // residence (type 1) — original fill table
-     $opsByAnchor = [
+                        // P12 self DOB (day/month/year) + phone (specific anchor BEFORE the generic ວັນ,...)
+                        'PREFIXວັນ, ເດືອນ, ປີເກີດ, ວັນທີ' => [
+                        [['dots', 'ວັນທີ', $d], ['dots2', 'ເດືອນ', $m], ['dots2', 'ປີ', $y], ['dots', 'ເບີໂທລະສັບ', $row['phone']]],
+                        ],
+                        // P253 father / P260 mother / P271 spouse / P327 sp father / P331 sp mother DOB+nat+eth+rel
+                        'PREFIXວັນ, ເດືອນ, ປີເກີດ' => [
+                        [['dots', 'ວັນ, ເດືອນ, ປີເກີດ', fmtDate($eavGet('bio_father_dob'))], ['dots', 'ສັນຊາດ', $eavGet('bio_father_nat')], ['dots', 'ຊົນເຜົ່າ', $eavGet('bio_father_eth')], ['dots', 'ສາສະໜາ', $eavGet('bio_father_rel')]],
+                        [['dots', 'ວັນ, ເດືອນ, ປີເກີດ', fmtDate($eavGet('bio_mother_dob'))], ['dots', 'ສັນຊາດ', $eavGet('bio_mother_nat')], ['dots', 'ຊົນເຜົ່າ', $eavGet('bio_mother_eth')], ['dots', 'ສາສະໜາ', $eavGet('bio_mother_rel')]],
+                        [['dots', 'ວັນ,ເດືອນ, ປີເກີດ', fmtDate($eavGet('bio_spouse_dob'))], ['dots', 'ສັນຊາດ', $eavGet('bio_spouse_nat')], ['dots', 'ຊົນເຜົ່າ', $eavGet('bio_spouse_eth')], ['dots', 'ສາສະໜາ', $eavGet('bio_spouse_rel')]],
+                        [['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($eavGet('bio_sp_father_dob'))], ['dots', 'ສັນຊາດ', $eavGet('bio_sp_father_nat')], ['dots', 'ຊົນເຜົ່າ', $eavGet('bio_sp_father_eth')], ['dots', 'ສາສະໜາ', $eavGet('bio_sp_father_rel')]],
+                        [['dots', 'ວັນ, ເດືອນ, ປີເກີດ', fmtDate($eavGet('bio_sp_mother_dob'))], ['dots', 'ສັນຊາດ', $eavGet('bio_sp_mother_nat')], ['dots', 'ຊົນເຜົ່າ', $eavGet('bio_sp_mother_eth')], ['dots', 'ສາສະໜາ', $eavGet('bio_sp_mother_rel')]],
+                        ],
+                        // P13 birth place
+                        'PREFIXບ້ານເກີດ' => [
+                        [['dots', 'ບ້ານເກີດ', $row['birth_village'] ?? $birthVillageName], ['dots', 'ເມືອງ', $row['birth_district'] ?? $birthDistrictName], ['dots', 'ແຂວງ', $row['birth_province'] ?? $birthProvinceName]],
+                        ],
+                        // P14 class / nationality / ethnicity / religion
+                        'PREFIXຊົນຊັ້ນ' => [
+                        [['dots', 'ຊົນຊັ້ນ', $eavGet('bio_class')], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ຊົນຜົ່າ', $ethnicityName], ['dots', 'ສາສະໜາ', $religionName]],
+                        ],
+                        // P15 current address
+                        'PREFIXບ່ອນຢູ່ປະຈຸບັນ' => [
+                        [['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $row['district_name'] ?? ''], ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
+                        ],
+                        // P16 family book
+                        'PREFIXສຳມະໂນຄົວເລກທີ່' => [
+                        [['dots', 'ສຳມະໂນຄົວເລກທີ່', $eavGet('bio_family_book_no')], ['dots', 'ລົງວັນທີ', fmtDate($eavGet('bio_family_book_date'))], ['dots', 'ອອກໃຫ້ທີ່', $eavGet('bio_family_book_at')]],
+                        ],
+                        // P17 ID card
+                        'PREFIXບັດປະຈຳຕົວເລກທີ' => [
+                        [['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']], ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])], ['dots', 'ອອກໃຫ້ທີ່', $eavGet('bio_id_issue_at')]],
+                        ],
+                        // P18 workplace
+                        'PREFIXບ່ອນປະຈຳການ' => [
+                        [['dots', 'ບ່ອນປະຈຳການ', $eavGet('bio_workplace')]],
+                        ],
+                        // P19 revolution + party org entry
+                        'PREFIXວັນ, ເດືອນ, ປີເຂົ້າການປະຕິວັດ' => [
+                        [['dots', 'ວັນ, ເດືອນ, ປີເຂົ້າການປະຕິວັດ', fmtDate($eavGet('bio_rev_date'))], ['dots', 'ວັນ, ເດືອນ, ປີເຂົ້າສັງກັດລັດ', fmtDate($eavGet('bio_party_date'))]],
+                        ],
+                        // P20 position / P21 salary
+                        'PREFIXໜ້າທີ່ຮັບຜິດຊອບ' => [['dots', 'ໜ້າທີ່ຮັບຜິດຊອບ', $eavGet('bio_position')]],
+                        'PREFIXຊັ້ນ, ຂັ້ນເງິນເດືອນ' => [['dots', 'ຊັ້ນ, ຂັ້ນເງິນເດືອນ', $eavGet('bio_salary')]],
+                        // P23-27 organizations / party
+                        'PREFIXວັນ, ເດືອນ, ປີເຂົ້າອົງການຈັດຕັ້ງຊາວໜຸ່ມ' => [['dots', 'ຢູ່ໃສ', $eavGet('bio_youth_at')]],
+                        'PREFIXວັນ, ເດືອນ, ປີເຂົ້າອົງການສະຫະພັນແມ່ຍິງ' => [['dots', 'ຢູ່ໃສ', $eavGet('bio_women_at')]],
+                        'PREFIXວັນ, ເດືອນ, ປີເຂົ້າອົງການຈັດຕັ້ງກຳມະບານ' => [['dots', 'ຢູ່ໃສ', $eavGet('bio_union_at')]],
+                        'PREFIXວັນ, ເດືອນ, ປີເຂົ້າພັກສຳຮອງ' => [['dots', 'ວັນ, ເດືອນ, ປີເຂົ້າພັກສົມບູນ', fmtDate($eavGet('bio_party_full'))]],
+                        'PREFIXຜູ້ຮັບເຂົ້າພັກ' => [['dots', 'ຜູ້ຮັບເຂົ້າພັກຊື່ຫຍັງ', $eavGet('bio_recruiter')], ['dots', 'ດຽວນີ້ເຮັດຫຍັງ, ຢູ່ໃສ', $eavGet('bio_recruiter_now')]],
+                        // P29 education
+                        'PREFIXການສຶກສາຈົບປະຖົມ' => [['dots', 'ຈົບປະຖົມ', $eavGet('bio_educ_primary')], ['dots', 'ຈົບມໍຕົ້ນ', $eavGet('bio_educ_lower')], ['dots', 'ຈົບມໍປາຍ', $eavGet('bio_educ_upper')]],
+                        // P35-38 languages
+                        'PREFIXພາສາອັງກິດ' => [['dots', 'ພາສາອັງກິດ', $eavGet('bio_lang_en')]],
+                        'PREFIXພາສາຝລັ່ງ' => [['dots', 'ພາສາຝລັ່ງ', $eavGet('bio_lang_fr')]],
+                        'PREFIXພາສາລັດເຊຍ' => [['dots', 'ພາສາລັດເຊຍ', $eavGet('bio_lang_ru')]],
+                        'PREFIXພາສາອື່ນໆ' => [['dots', 'ພາສາອື່ນໆ', $eavGet('bio_lang_other')]],
+                        // P254 father / P261 mother / P329 sp father / P333 sp mother village/district/province
+                        'PREFIXບ້ານຢູ່ປະຈຸບັນ' => [
+                        [['dots', 'ບ້ານຢູ່ປະຈຸບັນ', $eavGet('bio_father_village')], ['dots', 'ເມືອງ', $eavGet('bio_father_district')], ['dots', 'ແຂວງ', $eavGet('bio_father_province')]],
+                        [['dots', 'ບ້ານຢູ່ປະຈຸບັນ', $eavGet('bio_mother_village')], ['dots', 'ເມືອງ', $eavGet('bio_mother_district')], ['dots', 'ແຂວງ', $eavGet('bio_mother_province')]],
+                        [['dots', 'ບ້ານຢູ່ປະຈຸບັນ', $eavGet('bio_sp_father_village')], ['dots', 'ເມືອງ', $eavGet('bio_sp_father_district')], ['dots', 'ແຂວງ', $eavGet('bio_sp_father_province')]],
+                        [['dots', 'ບ້ານຢູ່ປະຈຸບັນ', $eavGet('bio_sp_mother_village')], ['dots', 'ເມືອງ', $eavGet('bio_sp_mother_district')], ['dots', 'ແຂວງ', $eavGet('bio_sp_mother_province')]],
+                        ],
+                        // P255 father / P262 mother / P272 spouse / P328 sp father / P332 sp mother occupation (+workplace for spouse/in-law)
+                        'PREFIXອາຊີບປະຈຸບັນ' => [
+                        [['dots', 'ອາຊີບປະຈຸບັນ', $eavGet('bio_father_job')]],
+                        [['dots', 'ອາຊີບປະຈຸບັນ', $eavGet('bio_mother_job')]],
+                        [['dots', 'ອາຊີບປະຈຸບັນ', $eavGet('bio_spouse_job')], ['dots', 'ບ່ອນປະຈຳການ', $eavGet('bio_spouse_workplace')]],
+                        [['dots', 'ອາຊີບປະຈຸບັນ', $eavGet('bio_sp_father_job')], ['dots', 'ບ່ອນປະຈຳການ', $eavGet('bio_sp_father_at')]],
+                        [['dots', 'ອາຊີບປະຈຸບັນ', $eavGet('bio_sp_mother_job')], ['dots', 'ບ່ອນປະຈຳການ', $eavGet('bio_sp_mother_at')]],
+                        ],
+                        // P273 children count
+                        'PREFIXມີລູກ' => [['dots', 'ມີລູກນຳກັນຈັກຄົນ', $eavGet('bio_children_count')]],
+                        // P390 health
+                        'PREFIXສຸຂະພາບ' => [['dots', 'ສຸຂະພາບ', $eavGet('bio_health')]],
+                        // P393 signature province + date
+                        'PREFIXແຂວງ' => [['dots', 'ແຂວງ', $row['province_name'] ?? ''], ['dots', 'ວັນທີ', date('d')], ['dots', 'ເດືອນ', date('m')], ['dots', 'ປີ', date('Y')]],
+                        ];
+                        } else {
+                        // residence (type 1) — original fill table
+                        $opsByAnchor = [
         '/ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
         'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
         'ທ້າວ ຫຼື ນາງ' => [['name', trim($nameTitle . ' ' . $row['first_name']), $row['last_name']]],
@@ -693,11 +794,11 @@ $zip->close();
 $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_' : 'ສັນຍາກູ້ຢືມເງິນ_')
-            : ((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_' : 'loan_contract_')
-            : ((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : 'residence_cert_')) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : 'residence_cert_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
