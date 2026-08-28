@@ -12,7 +12,16 @@ unset($_SESSION['alert']);
 $statusFilter = $_GET['status'] ?? '';
 $where = '';
 $params = [];
-if ($statusFilter) { $where = "WHERE d.status = ?"; $params[] = $statusFilter; }
+if ($statusFilter) {
+  // Pending Payment queue covers the whole fee phase: ISSUED = approved & certificate
+  // issued, citizen hasn't paid yet; PENDING_PAYMENT = slip submitted, awaiting verify.
+  if ($statusFilter === 'PENDING_PAYMENT') {
+    $where = "WHERE d.status IN ('ISSUED','PENDING_PAYMENT')";
+  } else {
+    $where = "WHERE d.status = ?";
+    $params[] = $statusFilter;
+  }
+}
 
 $sql = "SELECT d.*, di.name_lo AS item_name, di.doc_item_code, di.doc_type_id, c.first_name, c.last_name,
                v.name_lo AS village_name, t.name_lo AS taseng_name,
