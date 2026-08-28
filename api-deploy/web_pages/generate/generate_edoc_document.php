@@ -106,7 +106,7 @@ $template = ($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
     : ($row['doc_type_id'] == 6
         ? (((int)$row['doc_item_id'] === 53)
-            ? '/var/www/html/edoc/Doc_files/06-31-ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ.docx'
+            ? '/var/www/html/edoc/Doc_files/06-31-03 ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ.docx'
             : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx')
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
