@@ -449,9 +449,11 @@ if ((int)$row['doc_type_id'] === 14) {
              ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
              ['dots', 'ເບີໂທລະສັບ', $row['phone']]],
         ],
-        // P10 loan amount + words
+        // P10 loan amount + P11 amount in words (parens on its own line)
         'ຢືມເງິນຈໍານວນ' => [
             ['dots', 'ຈໍານວນ', $eavGet('loan_amount')],
+        ],
+        'ເພື່ອນໍາໄປໝູນ' => [
             ['dots', '(', $eavGet('loan_amount_words')],
         ],
         // P12 loan period (start / end / months)
