@@ -196,20 +196,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $doc_status = ($mode === 'draft') ? 'DRAFT' : 'PENDING_APPROVAL';
+        $template_variant = (isset($_POST['template_variant']) && in_array($_POST['template_variant'], ['short', 'full'], true)) ? $_POST['template_variant'] : null;
 
         if ($doc_id > 0) {
             $stmt = $conn->prepare("UPDATE edoc_document
-                                      SET citizen_id=?, buyer_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, source='OFFICE', submitted_at=IF(?='PENDING_APPROVAL', COALESCE(submitted_at, NOW()), submitted_at)
+                                      SET citizen_id=?, buyer_id=?, doc_item_id=?, village_id=?, off_id=?, status=?, amount=?, template_variant=?, source='OFFICE', submitted_at=IF(?='PENDING_APPROVAL', COALESCE(submitted_at, NOW()), submitted_at)
                                     WHERE id=?");
-            $stmt->execute([$citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $doc_status, $doc_id]);
+            $stmt->execute([$citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $template_variant, $doc_status, $doc_id]);
         } else {
             // sequence from max existing suffix for today (COUNT-based numbering collides after same-day deletes)
             $prefix = 'DOC-' . date('Ymd') . '-';
             $seq = (int)$conn->query("SELECT COALESCE(MAX(CAST(SUBSTRING(doc_no, 14) AS UNSIGNED)), 0) + 1 FROM edoc_document WHERE doc_no LIKE " . $conn->quote($prefix . '%'))->fetchColumn();
             $doc_no = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
             $submitted_at_sql = ($doc_status === 'PENDING_APPROVAL') ? 'NOW()' : 'NULL';
-            $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, buyer_id, doc_item_id, village_id, off_id, status, amount, source, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,?,?,$submitted_at_sql)");
-            $stmt->execute([$doc_no, $citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, 'OFFICE', $created_by]);
+            $stmt = $conn->prepare("INSERT INTO edoc_document (doc_no, citizen_id, buyer_id, doc_item_id, village_id, off_id, status, amount, template_variant, source, created_by, submitted_at) VALUES (?,?,?,?,?,?,?,?,?,?,$submitted_at_sql)");
+            $stmt->execute([$doc_no, $citizen_id, $buyer_id ?: null, $doc_item_id, $village_id, $off_id, $doc_status, $amount, $template_variant, 'OFFICE', $created_by]);
             $doc_id = (int)$conn->lastInsertId();
         }
 

@@ -14,7 +14,7 @@ $edit_doc_id = !empty($_GET['doc_id']) ? (int)$_GET['doc_id'] : 0;
 $editData = null;   // joined citizen + doc (+ doc_type/item)
 $editForm = [];     // field_id => saved value
 if ($edit_doc_id) {
-    $st = $conn->prepare("SELECT c.*, d.doc_no, d.status, d.amount, di.doc_type_id, di.id AS doc_item_id,
+    $st = $conn->prepare("SELECT c.*, d.doc_no, d.status, d.amount, d.template_variant, di.doc_type_id, di.id AS doc_item_id,
                                  b.id AS buyer_id, b.id_card AS buyer_id_card, b.first_name AS buyer_first_name,
                                  b.last_name AS buyer_last_name, b.title AS buyer_title, b.gender AS buyer_gender,
                                  b.dob AS buyer_dob, b.phone AS buyer_phone, b.email AS buyer_email,
@@ -433,6 +433,17 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
 
         <!-- TAB 3: DOCUMENT (rendered from edoc_doc_field for this doc_type) -->
         <div class="tab-pane fade" id="p-doc" role="tabpanel">
+          <?php if ($item['id'] == 8): // biography: choose short or full version ?>
+          <div class="mb-3 p-3 bg-light rounded">
+            <label class="form-label fw-bold">ແບບຟອມຊີວະປະຫວັດ (Biography template):</label>
+            <select class="form-select" id="template_variant">
+              <option value="full" <?= ($editData['template_variant'] ?? '') === 'full' ? 'selected' : '' ?>>ແບບຟອມເຕັມຫຼາຍໜ້າ — Full (multi-page)</option>
+              <option value="short" <?= ($editData['template_variant'] ?? '') === 'short' ? 'selected' : '' ?>>ແບບຟອມສັ້ນ — Short (one-page)</option>
+            </select>
+          </div>
+          <?php else: ?>
+          <input type="hidden" id="template_variant" value="">
+          <?php endif; ?>
           <div id="docFields"><p class="text-muted">ກະລຸນາເລືອກປະເພດ ແລະ ປ້ອນຂໍ້ມູນພົນລະເມືອງກ່ອນ.</p></div>
         </div>
       </div>
@@ -578,6 +589,7 @@ function loadDocFields() {
 
 function saveRequest(mode) {
   const data = {
+    template_variant: document.getElementById('template_variant') ? document.getElementById('template_variant').value : '',
     mode,
     doc_item_id: DOC_ITEM_ID,
     id: EDIT_DOC_ID || 0,

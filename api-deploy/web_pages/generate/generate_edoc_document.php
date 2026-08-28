@@ -111,7 +111,9 @@ $template = ($row['doc_type_id'] == 14)
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
             : (((int)$row['doc_item_id'] === 8)
-                ? '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx'
+                ? (($row['template_variant'] ?? '') === 'short'
+                    ? '/var/www/html/edoc/Doc_files/01-08-ປະຫວັດຫຍໍ້.docx'
+                    : '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx')
                 : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
@@ -605,7 +607,65 @@ if ((int)$row['doc_type_id'] === 14) {
                                 ['dots2', 'ຊື່ແຈ້ງ:', $buyerName],
                             ],
                         ];
-                        } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8) {
+                        } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8 && ($row['template_variant'] ?? '') === 'short') {
+    // ຊີວະປະຫວັດຫຍໍ້ (SHORT biography, doc_type 1, item 8, template 01-08-ປະຫວັດຫຍໍ້)
+    // Condensed one-page: self profile spans 2 long paragraphs (P6/P7), father P14,
+    // mother P15 (both also start with ຊື່ ແລະ ນາມສະກຸນ -> occurrence-aware).
+    // Sibling/history blank lines stay for handwriting.
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $bioName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    $ageOf = function($dob) { return $dob ? floor((time() - strtotime($dob)) / 31536000) : ''; };
+    $opsByAnchor = [
+        // P6 self name line / P14 father / P15 mother (all start ຊື່ ແລະ ນາມສະກຸນ)
+        'PREFIXຊື່ ແລະ ນາມສະກຸນ' => [
+            [['dots', 'ຊື່ ແລະ ນາມສະກຸນ:', $bioName],
+             ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $row['dob'] ? date('d/m/Y', strtotime($row['dob'])) : ''],
+             ['dots', 'ບ້ານເກີດ', $row['birth_village'] ?? $birthVillageName],
+             ['dots', 'ເມືອງ', $row['birth_district'] ?? $birthDistrictName],
+             ['dots', 'ແຂວງ', $row['birth_province'] ?? $birthProvinceName],
+             ['dots', 'ເຊື້ອຊາດ', $originName],
+             ['dots', 'ສັນຊາດ', $nationalityName]],
+            [['dots', 'ຊື່ ແລະ ນາມສະກຸນພໍ່ :', $eavGet('bio_father_name')],
+             ['dots', 'ອາຍຸ', $ageOf($eavGet('bio_father_dob'))],
+             ['dots', 'ສັນຊາດ', $eavGet('bio_father_nat')],
+             ['dots', 'ເຊື້ອຊາດ', $eavGet('bio_father_eth')],
+             ['dots', 'ອາຊີບ', $eavGet('bio_father_job')],
+             ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('bio_father_village')],
+             ['dots', 'ເມືອງ', $eavGet('bio_father_district')],
+             ['dots', 'ແຂວງ', $eavGet('bio_father_province')]],
+            [['dots', 'ຊື່ ແລະ ນາມສະກຸນແມ່: :', $eavGet('bio_mother_name')],
+             ['dots', 'ອາຍຸ', $ageOf($eavGet('bio_mother_dob'))],
+             ['dots', 'ສັນຊາດ', $eavGet('bio_mother_nat')],
+             ['dots', 'ເຊື້ອຊາດ', $eavGet('bio_mother_eth')],
+             ['dots', 'ອາຊີບ', $eavGet('bio_mother_job')],
+             ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $eavGet('bio_mother_village')],
+             ['dots', 'ເມືອງ', $eavGet('bio_mother_district')],
+             ['dots', 'ແຂວງ', $eavGet('bio_mother_province')]],
+        ],
+        // P7 self second paragraph (ethnicity ... province) — one long line
+        'PREFIXຊົນເຜົ່າ' => [
+            [['dots', 'ຊົນເຜົ່າ', $ethnicityName],
+             ['dots', 'ສາສະໜາ', $religionName],
+             ['dots', 'ສຳມະໂນຄົວເລກທີ', $eavGet('bio_family_book_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('bio_family_book_date'))],
+             ['dots', 'ບັດປະຈຳຕົວເລກທີ', $row['id_card']],
+             ['dots2', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])],
+             ['dots', 'ລະດັບການສຶກສາ', $eavGet('bio_educ_upper')],
+             ['dots', 'ລະດັບວິຊາສະເພາະ', $eavGet('bio_special')],
+             ['dots', 'ອາຊີບປະຈຸບັນ', $occupationName],
+             ['dots', 'ບ່ອນປະຈຳການ', $eavGet('bio_workplace')],
+             ['dots', 'ໜ້າທີ່ຮັບຜິດຊອບ', $eavGet('bio_position')],
+             ['dots', 'ວັນ/ເດືອນ/ປີສັງກັດລັດ', fmtDate($eavGet('bio_party_date'))],
+             ['dots', 'ປະຈຸບັນຢູ່ບ້ານ', $row['village_name']],
+             ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
+        ],
+        // P24 signature place + date
+        'PREFIXທີ່' => [
+            [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dots', 'ວັນທີ', $today]],
+        ],
+    ];
+                    } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8) {
                         // ຊີວະປະຫວັດທົ່ວໄປ (biography / CV form, doc_type 1, item 8)
                         // Applicant profile from citizen record; family/spouse/work/education from EAV.
                         // Free-text dotted lines and internal tables (history/training/awards/discipline/
