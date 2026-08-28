@@ -175,6 +175,15 @@ function replacePhrase($p, $OLD, $NEW) {
   if ($idx === false) return false;
   return spliceAt($p, $idx, strlen($OLD), $NEW);
 }
+// true if the text at $full[$i] starts a dot-fill char ('.' or the 3-byte '…' ellipsis).
+// Returns the byte length consumed (1 for '.', 3 for '…'), 0 if not a dot char.
+function dotLen($full, $i) {
+  $b = $full[$i];
+  if ($b === '.') return 1;
+  if ($b === "\xE2" && substr($full, $i, 3) === '…') return 3; // U+2026
+  return 0;
+}
+
 // fill the dots that follow $label in paragraph $p (splice at exact position).
 // Returns TRUE when the row is fillable (label found AND dots after it) — the
 // occurrence counter advances on fillable rows even when the value is empty, so
@@ -189,7 +198,7 @@ function fillDots($p, $label, $value) {
   $ws = $pos + strlen($label);
   while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
-  while ($e < $len && $full[$e] === '.') $e++;
+  while ($e < $len && ($dl = dotLen($full, $e)) > 0) $e += $dl;
   if ($e > $ws) {
     if ($value !== '') {
       $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
@@ -212,7 +221,12 @@ function fillDotSpan($p, $label, $value) {
   $ws = $pos + strlen($label);
   while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
-  while ($e < $len && ($full[$e] === '.' || $full[$e] === '/' || $full[$e] === '…')) $e++;
+  while ($e < $len) {
+    $dl = dotLen($full, $e);
+    if ($dl > 0) { $e += $dl; continue; }
+    if ($full[$e] === '/') { $e++; continue; }
+    break;
+  }
   if ($e > $ws) {
     if ($value !== '') {
       $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
@@ -239,7 +253,7 @@ function fillDotsN($p, $label, $value, $n) {
   $ws = $pos + strlen($label);
   while ($ws < $len && $full[$ws] === ' ') $ws++;
   $e = $ws;
-  while ($e < $len && $full[$e] === '.') $e++;
+  while ($e < $len && ($dl = dotLen($full, $e)) > 0) $e += $dl;
   if ($e > $ws) {
     if ($value !== '') {
       $ins = (trim(substr($full, $e)) === '') ? ' ' . $value : ' ' . $value . ', ';
@@ -559,22 +573,22 @@ if ((int)$row['doc_type_id'] === 14) {
                             ['dotspan', 'ເມືອງ', $eavGet('land_district')],
                             ['dotspan', 'ແຂວງ', $eavGet('land_province')],
                             ['dotspan', 'ເນື້ອທີ່ດິນ', $eavGet('land_area_m2')],
-                            ['dotspan', 'ໃບຕາເລກທີ', $eavGet('land_deed_no')],
-                            ['dotspan', 'ແຜນຕາດິນເລກທີ', $eavGet('land_map_no')],
-                            ['dotspan', 'ອອກຊື່', $eavGet('land_owner_name')],
+                            ['dotspan', 'ໃບຕາເລກທີ:', $eavGet('land_deed_no')],
+                            ['dotspan', 'ແຜນຕາດິນເລກທີ:', $eavGet('land_map_no')],
+                            ['dotspan', 'ອອກຊື່:', $eavGet('land_owner_name')],
                             ['dotspan', 'ລົງວັນທີ', fmtDate($eavGet('land_owner_date'))],
                         ],
                         // P20 ມາດຕາ 2 price line (total + paid)
                         'PREFIXລວມລາຄາ' => [
-                            ['dotspan', 'ລວມລາຄາ', $eavGet('total_price')],
-                            ['dots', 'ເປັນຕົວໜັງສື', $eavGet('total_price_words')],
+                            ['dotspan', 'ລວມລາຄາ:', $eavGet('total_price')],
+                            ['dots', 'ເປັນຕົວໜັງສື:', $eavGet('total_price_words')],
                             ['dotspan', 'ແລ້ວຈຳນວນ', $eavGet('paid_amount')],
                         ],
                         // P21 ມາດຕາ 2 payment line (paid words / remaining / deadline / after-sale / days)
                         'ສ່ວນຈຳນວນທີ່ຍັງເຫຼືອ' => [
-                            ['dots', 'ເປັນຕົວໜັງສື', $eavGet('paid_amount_words')],
+                            ['dots', 'ເປັນຕົວໜັງສື:', $eavGet('paid_amount_words')],
                             ['dotspan', 'ສ່ວນຈຳນວນທີ່ຍັງເຫຼືອ', $eavGet('remaining_amount')],
-                            ['dots2', 'ເປັນຕົວໜັງສື', $eavGet('remaining_words')],
+                            ['dots2', 'ເປັນຕົວໜັງສື:', $eavGet('remaining_words')],
                             ['dotspan', 'ພາຍຫຼັງ', $eavGet('deadline_after')],
                             ['dotspan', 'ອອກເປັນຊື່', $eavGet('after_sale_name')],
                             ['dotspan', 'ກາຍ', $eavGet('deadline_days')],
@@ -585,8 +599,8 @@ if ((int)$row['doc_type_id'] === 14) {
                         ],
                         // P39 signature names (seller / buyer)
                         'ຊື່ແຈ້ງ' => [
-                            ['dots', 'ຊື່ແຈ້ງ', $sellerName],
-                            ['dots2', 'ຊື່ແຈ້ງ', $buyerName],
+                            ['dots', 'ຊື່ແຈ້ງ:', $sellerName],
+                            ['dots2', 'ຊື່ແຈ້ງ:', $buyerName],
                         ],
                     ];
                     } else {
