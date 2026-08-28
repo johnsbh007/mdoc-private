@@ -237,15 +237,37 @@ function presetGeo(prefix, c) {
       <input type="hidden" id="doc_hidden_id" value="<?= $edit_doc_id ?>">
       <input type="hidden" id="citizen_id" value="">
 
+<?php
+// Dynamic tab labels per item (pre-existing bug: all items showed Seller/Buyer/Other)
+$tab1Label = '1. ຂໍ້ມູນ (Person)';
+$tab2Label = '2. ຂໍ້ມູນ (Party 2)';
+$tab3Label = '3. ຂໍ້ມູນເອກະສານ (Document)';
+$party2Label = 'ຜູ້ຊື້ (Buyer)';
+if ($item['id'] == 52) { // land-sale
+    $tab1Label = '1. ຂໍ້ມູນຜູ້ຂາຍ (Seller)';
+    $tab2Label = '2. ຂໍ້ມູນຜູ້ຊື້ (Buyer)';
+    $tab3Label = '3. ຂໍ້ມູນອື່ນໆ (Other)';
+    $party2Label = 'ຜູ້ຊື້ (Buyer)';
+} elseif ($item['id'] == 28) { // loan contract
+    $tab1Label = '1. ຝ່າຍ ກໍ ຜູ້ໃຫ້ກູ້ (Party A - Lender)';
+    $tab2Label = '2. ຝ່າຍ ຂໍ ຜູ້ຢືມ (Party B - Borrower)';
+    $tab3Label = '3. ລາຍລະອຽດສັນຍາ (Contract terms)';
+    $party2Label = 'ຜູ້ຢືມ (Borrower)';
+}
+?>
+
       <ul class="nav nav-tabs mb-3" id="reqTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-person" data-bs-toggle="tab" data-bs-target="#p-person" type="button" role="tab">1. ຂໍ້ມູນຜູ້ຂາຍ (Seller)</button>
+          <button class="nav-link active" id="tab-person" data-bs-toggle="tab" data-bs-target="#p-person" type="button" role="tab"><?= $tab1Label ?></button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-buyer" data-bs-toggle="tab" data-bs-target="#p-buyer" type="button" role="tab">2. ຂໍ້ມູນຜູ້ຊື້ (Buyer)</button>
+          <button class="nav-link" id="tab-buyer" data-bs-toggle="tab" data-bs-target="#p-buyer" type="button" role="tab"><?= $tab2Label ?></button>
         </li>
+<?php if (!in_array($item['id'], [52, 28], true)): /* hide the party-2 tab for single-party items */ ?>
+        <style>#tab-buyer { display:none !important; } #p-buyer { display:none !important; }</style>
+<?php endif; ?>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-doc" data-bs-toggle="tab" data-bs-target="#p-doc" type="button" role="tab">3. ຂໍ້ມູນອື່ນໆ (Other)</button>
+          <button class="nav-link" id="tab-doc" data-bs-toggle="tab" data-bs-target="#p-doc" type="button" role="tab"><?= $tab3Label ?></button>
         </li>
       </ul>
 
@@ -333,7 +355,7 @@ function presetGeo(prefix, c) {
         <div class="tab-pane fade" id="p-buyer" role="tabpanel">
           <div class="row g-2 mb-3">
             <div class="col-md-4">
-              <label class="form-label">ເລກບັດປະຈຳຕົວ ຜູ້ຊື້ (Buyer National ID)</label>
+              <label class="form-label">ເລກບັດປະຈຳຕົວ <?= $party2Label ?> (National ID)</label>
               <div class="input-group">
                 <input type="text" id="b_nid" class="form-control" placeholder="ປ້ອນເລກບັດ...">
                 <button class="btn btn-outline-secondary" type="button" onclick="lookupBuyerNid()">ຄົ້ນຫາ</button>
@@ -364,7 +386,7 @@ function presetGeo(prefix, c) {
             <div class="col-md-3"><label class="form-label">ວັນອອກບັດ</label><input type="date" id="b_id_card_issue_date" class="form-control"></div>
           </div>
           <hr>
-          <h6>ທີ່ຢູ່ປັດຈຸບັນ ຜູ້ຊື້ (Buyer current address)</h6>
+          <h6>ທີ່ຢູ່ປັດຈຸບັນ <?= $party2Label ?> (Current address)</h6>
           <div class="row g-2">
             <div class="col-md-3">
               <label class="form-label">ແຂວງ (Province)</label>
@@ -387,7 +409,7 @@ function presetGeo(prefix, c) {
             <div class="col-md-3"><label class="form-label">ທີ່ຢູ່ເພີ່ມເຕີມ</label><input id="b_address_line" class="form-control"></div>
           </div>
           <hr>
-          <h6>ສະຖານທີ່ເກີດ ຜູ້ຊື້ (Buyer birth place)</h6>
+          <h6>ສະຖານທີ່ເກີດ <?= $party2Label ?> (Birth place)</h6>
           <div class="row g-2">
             <div class="col-md-3">
               <label class="form-label">ແຂວງເກີດ (Province)</label>
@@ -668,7 +690,7 @@ $(function(){
       if (bc.id_card) document.getElementById('b_nid').value = bc.id_card;
       fillBuyer(bc);
       if (bc.title) document.getElementById('b_title').value = bc.title;
-      document.getElementById('b_nidMsg').textContent = 'ຜູ້ຊື້: ' + (bc.first_name || '') + ' ' + (bc.last_name || '');
+      document.getElementById('b_nidMsg').textContent = '<?= $party2Label ?>: ' + (bc.first_name || '') + ' ' + (bc.last_name || '');
     }
   }
   loadDocFields();
