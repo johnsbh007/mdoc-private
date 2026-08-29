@@ -615,9 +615,9 @@ if ((int)$row['doc_type_id'] === 14) {
     // P9/P12 (ຊື່ຜົວ ຫຼື ເມຍ) and P10/P13 (ທີ່ຢູ່ປະຈຸບັນບ້ານ) are identical
     // two-party lines -> occurrence-aware. Direction table (P16-19) stays blank.
     $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
-    $ownerName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    $ownerName = trim($row['first_name'] . ' ' . $row['last_name']);
     $ownerAge  = $row['dob'] ? floor((time() - strtotime($row['dob'])) / 31536000) : '';
-    $renterName = trim(($row['buyer_title'] ?? '') . ' ' . ($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
+    $renterName = trim(($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
     $renterAge  = $row['buyer_dob'] ? floor((time() - strtotime($row['buyer_dob'])) / 31536000) : '';
     $renterNat = resolveName($conn, 'edoc_country', $row['buyer_nationality'] ?? '');
     $renterOcc = resolveName($conn, 'edoc_occupation', $row['buyer_occupation'] ?? '');
