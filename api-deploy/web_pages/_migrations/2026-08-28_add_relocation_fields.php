@@ -29,11 +29,11 @@ $fields = [
 
 $inserted = 0; $sort = 1;
 foreach ($fields as [$name, $label, $type]) {
-    $st = $conn->prepare("SELECT id FROM edoc_doc_field WHERE doc_type_id=1 AND doc_item_id=28 AND field_name=?");
+    $st = $conn->prepare("SELECT id FROM edoc_doc_field WHERE doc_type_id=1 AND doc_item_id=54 AND field_name=?");
     $st->execute([$name]);
     if (!$st->fetchColumn()) {
         $conn->prepare("INSERT INTO edoc_doc_field (doc_type_id, doc_item_id, field_name, field_label, field_type, is_active, sort_order)
-                        VALUES (1, 28, ?, ?, ?, 1, ?)")->execute([$name, $label, $type, $sort]);
+                        VALUES (1, 54, ?, ?, ?, 1, ?)")->execute([$name, $label, $type, $sort]);
         $inserted++;
     }
     $sort++;
