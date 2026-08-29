@@ -113,10 +113,12 @@ $template = ($row['doc_type_id'] == 14)
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
             : (((int)$row['doc_item_id'] === 8)
-                ? (($row['template_variant'] ?? '') === 'short'
-                    ? '/var/www/html/edoc/Doc_files/01-08-ປະຫວັດຫຍໍ້.docx'
-                    : '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx')
-                : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')));
+                            ? (($row['template_variant'] ?? '') === 'short'
+                                ? '/var/www/html/edoc/Doc_files/01-08-ປະຫວັດຫຍໍ້.docx'
+                                : '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx')
+                            : (((int)$row['doc_item_id'] === 54)
+                                ? '/var/www/html/edoc/Doc_files/01-28-22 ໃບຍົກຍ້າຍ.docx'
+                                : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'))));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -665,6 +667,42 @@ if ((int)$row['doc_type_id'] === 14) {
         // P32 signature place + date
         'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dotspan', 'ວັນທີ', $today]],
     ];
+                    } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 54) {
+    // ໃບຍົກຍ້າຍ (Relocation Certificate, doc_type 1, item 54, code 28)
+    // Single-party certificate: applicant = person being transferred. Name/DOB from
+    // citizen record; recipient, subject, legal basis, org, position, grades, from/to = EAV.
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $personName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    $opsByAnchor = [
+        // P5 doc ref + P6 date
+        'ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
+        'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dots', 'ວັນທີ', $today]],
+        // P10 recipient / P11 subject
+        'PREFIXຮຽນ:' => [['dots', 'ຮຽນ:', $eavGet('relocate_recipient')]],
+        'PREFIXເລື່ອງ:' => [['dots', 'ເລື່ອງ:', $eavGet('relocate_subject')]],
+        // P13 basis1 / P15 basis2 (identical ອີງຕາມ: prefixes)
+        'PREFIXອີງຕາມ:' => [
+            [['dots', 'ອີງຕາມ:', $eavGet('relocate_basis1')]],
+            [['dots', 'ອີງຕາມ:', $eavGet('relocate_basis2')]],
+        ],
+        // P17 org name (appears again in P20)
+        'PREFIXຊື່ອົງການຈັດຕັ້ງ' => [['dots', 'ຊື່ອົງການຈັດຕັ້ງ', $eavGet('relocate_org_name')]],
+        // P18 person details (name, DOB, position, years, grade, salary, education, from)
+        'PREFIXເຫັນດີຍົກຍ້າຍ' => [
+            [['dots', 'ເຫັນດີຍົກຍ້າຍທ່ານ', $personName],
+             ['dots', 'ວັນ, ເດືອນ, ປີເກີດ', $row['dob'] ? date('d/m/Y', strtotime($row['dob'])) : ''],
+             ['dots', 'ຕຳແໜ່ງ', $eavGet('relocate_position')],
+             ['dots', 'ປີການ', $eavGet('relocate_years')],
+             ['dots', 'ຊັ້ນ', $eavGet('relocate_grade')],
+             ['dots', 'ຂັ້ນເງິນເດືອນ', $eavGet('relocate_salary')],
+             ['dots', 'ວຸດທິການສຶກສາ', $eavGet('relocate_education')],
+             ['dots', 'ຈາກ', $eavGet('relocate_from')]],
+        ],
+        // P19 to place
+        'PREFIXໄປປະຈໍາຢູ່' => [['dots', 'ໄປປະຈໍາຢູ່', $eavGet('relocate_to')]],
+        // P20 closing paragraph (org name repeated)
+        'PREFIXດັ່ງນັ້ນ' => [['dots', 'ຊື່ອົງການຈັດຕັ້ງ', $eavGet('relocate_org_name')]],
+    ];
                     } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8 && ($row['template_variant'] ?? '') === 'short') {
     // ຊີວະປະຫວັດຫຍໍ້ (SHORT biography, doc_type 1, item 8, template 01-08-ປະຫວັດຫຍໍ້)
     // Condensed one-page: self profile spans 2 long paragraphs (P6/P7), father P14,
@@ -914,13 +952,13 @@ $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂ
             ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_'
                 : ((int)$row['doc_item_id'] === 30 ? 'ໃບສັນຍາເຊົ່າ_'
                     : 'ສັນຍາກູ້ຢືມເງິນ_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_'))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_'
                 : ((int)$row['doc_item_id'] === 30 ? 'lease_contract_'
                     : 'loan_contract_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : 'residence_cert_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : 'residence_cert_'))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
