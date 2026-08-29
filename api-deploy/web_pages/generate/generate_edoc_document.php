@@ -107,7 +107,9 @@ $template = ($row['doc_type_id'] == 14)
     : ($row['doc_type_id'] == 6
         ? (((int)$row['doc_item_id'] === 53)
             ? '/var/www/html/edoc/Doc_files/06-31-03 ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ.docx'
-            : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx')
+            : (((int)$row['doc_item_id'] === 30)
+                ? '/var/www/html/edoc/Doc_files/06-30-21 ໃບສັນຍາເຊົ່າທີ່ດິນ ແລະ ເຮືອນ.docx'
+                : '/var/www/html/edoc/Doc_files/06-28-02 ສັນຍາກູ້ຢືມເງິນ.docx'))
         : (((int)$row['doc_item_id'] === 5)
             ? '/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx'
             : (((int)$row['doc_item_id'] === 8)
@@ -607,7 +609,63 @@ if ((int)$row['doc_type_id'] === 14) {
                                 ['dots2', 'ຊື່ແຈ້ງ:', $buyerName],
                             ],
                         ];
-                        } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8 && ($row['template_variant'] ?? '') === 'short') {
+                        } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 30) {
+    // ໃບສັນຍາເຊົ່າທີ່ດິນ ແລະ ເຮືອນ (Land & House Lease Contract, doc_type 6, item 30)
+    // Owner ເຈົ້າຂອງຊັບ = applicant citizen; Renter ຜູ້ເຂົ້າເຊົ່າ = buyer citizen.
+    // P9/P12 (ຊື່ຜົວ ຫຼື ເມຍ) and P10/P13 (ທີ່ຢູ່ປະຈຸບັນບ້ານ) are identical
+    // two-party lines -> occurrence-aware. Direction table (P16-19) stays blank.
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $ownerName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    $ownerAge  = $row['dob'] ? floor((time() - strtotime($row['dob'])) / 31536000) : '';
+    $renterName = trim(($row['buyer_title'] ?? '') . ' ' . ($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
+    $renterAge  = $row['buyer_dob'] ? floor((time() - strtotime($row['buyer_dob'])) / 31536000) : '';
+    $renterNat = resolveName($conn, 'edoc_country', $row['buyer_nationality'] ?? '');
+    $renterOcc = resolveName($conn, 'edoc_occupation', $row['buyer_occupation'] ?? '');
+    $opsByAnchor = [
+        // P3 doc ref + P4 date
+        'ຄປຕ' => [['dots', 'ເລກທີ', $row['doc_no']]],
+        'PREFIXລົງວັນທີ' => [['dots', 'ລົງວັນທີ', $today]],
+        // P8 owner name line / P9 owner spouse / P10 owner address
+        'PREFIXລະຫວ່າງ' => [
+            [['dots', 'ທ້າວ ຫຼື ນາງ', $ownerName], ['dots', 'ອາຍຸ', $ownerAge], ['dots', 'ສັນຊາດ', $nationalityName], ['dots', 'ອາຊີບ', $occupationName]],
+        ],
+        // P9 owner spouse / P12 renter spouse (identical ຊື່ຜົວ ຫຼື ເມຍ lines)
+        'PREFIXຊື່ຜົວ ຫຼື ເມຍ' => [
+            [['dots', 'ຊື່ຜົວ ຫຼື ເມຍ', $eavGet('lease_owner_spouse')]],
+            [['dots', 'ຊື່ຜົວ ຫຼື ເມຍ', $eavGet('lease_renter_spouse')]],
+        ],
+        // P10 owner address / P13 renter address (identical ທີ່ຢູ່ປະຈຸບັນບ້ານ lines)
+        'PREFIXທີ່ຢູ່ປະຈຸບັນບ້ານ' => [
+            [['dots', 'ບ້ານ', $row['village_name']], ['dots', 'ເມືອງ', $row['district_name'] ?? ''], ['dots', 'ແຂວງ', $row['province_name'] ?? '']],
+            [['dots', 'ບ້ານ', $row['buyer_village_name'] ?? ''], ['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''], ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? '']],
+        ],
+        // P11 renter name line (ແລະທ້າວ ຫຼື ນາງ)
+        'PREFIXແລະທ້າວ ຫຼື ນາງ' => [
+            [['dots', 'ທ້າວ ຫຼື ນາງ', $renterName], ['dots', 'ອາຍຸ', $renterAge], ['dots', 'ສັນຊາດ', $renterNat], ['dots', 'ອາຊີບ', $renterOcc]],
+        ],
+        // P14 property description
+        'PREFIXເຈົ້າຂອງຊັບໄດ້ຕົກລົງ' => [
+            [['dots', 'ເຈົ້າຂອງຊັບໄດ້ຕົກລົງໃຫ້ເຊົ່າ', $eavGet('lease_property_desc')]],
+        ],
+        // P15 land location
+        'PREFIXຊຶ່ງຕັ້ງຢູ່ບ້ານ' => [
+            [['dots', 'ຊຶ່ງຕັ້ງຢູ່ບ້ານ', $eavGet('land_village')], ['dots', 'ເມືອງ', $eavGet('land_district')], ['dots', 'ແຂວງ', $eavGet('land_province')]],
+        ],
+        // P20 area / term / start-end dates / price per year
+        'PREFIXລວມເນື້ອທີ່' => [
+            [['dots', 'ລວມເນື້ອທີ່:', $eavGet('lease_area_m2')],
+             ['dots', 'ກໍານົດເຊົ່າ', $eavGet('lease_term')],
+             ['dotspan', 'ເລີ່ມແຕ່ວັນທີ', fmtDate($eavGet('lease_start_date'))],
+             ['dotspan', 'ຈົນເຖິງວັນທີ', fmtDate($eavGet('lease_end_date'))],
+             ['dots', 'ໃນລາຄາ', $eavGet('lease_price_year')]],
+        ],
+        // P22 deposit / P23 installment
+        'PREFIX1. ຈ່າຍມັດຈໍາລ່ວງໜ້າ' => [['dots', 'ເງິນຈໍານວນ:', $eavGet('lease_deposit')]],
+        'PREFIX2. ຈ່າຍງວດປົກກະຕິ' => [['dots', 'ເງິນຈໍານວນ:', $eavGet('lease_installment')]],
+        // P32 signature place + date
+        'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dotspan', 'ວັນທີ', $today]],
+    ];
+                    } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 8 && ($row['template_variant'] ?? '') === 'short') {
     // ຊີວະປະຫວັດຫຍໍ້ (SHORT biography, doc_type 1, item 8, template 01-08-ປະຫວັດຫຍໍ້)
     // Condensed one-page: self profile spans 2 long paragraphs (P6/P7), father P14,
     // mother P15 (both also start with ຊື່ ແລະ ນາມສະກຸນ -> occurrence-aware).
@@ -853,11 +911,15 @@ $zip->close();
 // ── stream as download, or store to edoc_file_store (save=1) ───────
 $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
         : ($row['doc_type_id'] == 6
-            ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_' : 'ສັນຍາກູ້ຢືມເງິນ_')
+            ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_'
+                : ((int)$row['doc_item_id'] === 30 ? 'ໃບສັນຍາເຊົ່າ_'
+                    : 'ສັນຍາກູ້ຢືມເງິນ_'))
             : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
-            ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_' : 'loan_contract_')
+            ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_'
+                : ((int)$row['doc_item_id'] === 30 ? 'lease_contract_'
+                    : 'loan_contract_'))
             : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : 'residence_cert_')))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
