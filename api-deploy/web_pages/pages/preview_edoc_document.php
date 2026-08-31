@@ -312,6 +312,43 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 54) {
     <?php
 }
 
+// ── item 55 (damage certificate ໃບຢັ້ງຢືນການເສຍຫາຍ, doc_type 1): data-summary preview ──
+if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 55) {
+    $eav = [];
+    $ev = $conn->prepare("SELECT f.field_label, fd.field_value
+                          FROM edoc_form_data fd
+                          JOIN edoc_doc_field f ON f.id = fd.field_id
+                          WHERE fd.doc_id = ? ORDER BY f.sort_order");
+    $ev->execute([$doc_id]);
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { if ($r['field_value'] !== '' && $r['field_value'] !== null) { $eav[] = $r; } }
+    $applicant = trim(($row['title'] ?? '') . ' ' . ($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+    require '../components/layout.php';
+    ?>
+    <style>
+    .ls-card { max-width:720px; margin:0 auto; background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.07); padding:22px 26px; }
+    .ls-card h6 { border-bottom:2px solid #044482; padding-bottom:8px; margin-bottom:14px; }
+    .ls-row { display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid #eef2f7; font-size:.92rem; }
+    .ls-row .k { color:#64748b; flex:0 0 45%; }
+    .ls-row .v { font-weight:600; text-align:right; }
+    .ls-empty { color:#94a3b8; font-style:italic; }
+    </style>
+    <div class="container-fluid py-3">
+      <div class="ls-card">
+        <h6><i class="fas fa-exclamation-triangle text-warning"></i> ໃບຢັ້ງຢືນການເສຍຫາຍ — ສະຫຼຸບຂໍ້ມູນ (Damage/Loss certificate — data summary)</h6>
+        <div class="ls-row"><span class="k">ເລກທີ່ຄຳຮ້ອງ / Doc no</span><span class="v"><?= htmlspecialchars($row['doc_no']) ?></span></div>
+        <div class="ls-row"><span class="k">ຜູ້ແຈ້ງ (claimant)</span><span class="v"><?= htmlspecialchars($applicant) ?></span></div>
+        <?php if (!$eav): ?>
+          <div class="ls-empty mt-3">ຍັງບໍ່ມີຂໍ້ມູນ (No data captured yet)</div>
+        <?php else: foreach ($eav as $f): ?>
+          <div class="ls-row"><span class="k"><?= htmlspecialchars($f['field_label']) ?></span><span class="v"><?= htmlspecialchars($f['field_value']) ?></span></div>
+        <?php endforeach; endif; ?>
+      </div>
+    </div>
+    <?php require '../components/layout_footer.php'; ?>
+    <?php exit; ?>
+    <?php
+}
+
 $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);

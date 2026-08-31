@@ -118,7 +118,9 @@ $template = ($row['doc_type_id'] == 14)
                                 : '/var/www/html/edoc/Doc_files/01-08-08 ຊີວະປະຫວັດຫຍໍ້ຫຼາຍໜ້າ.docx')
                             : (((int)$row['doc_item_id'] === 54)
                                 ? '/var/www/html/edoc/Doc_files/01-28-22 ໃບຍົກຍ້າຍ.docx'
-                                : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'))));
+                                : (((int)$row['doc_item_id'] === 55)
+                                    ? '/var/www/html/edoc/Doc_files/01-29-29 ໃບຢັ້ງຢືນການເສຍຫາຍ.docx'
+                                    : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')))));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -667,6 +669,41 @@ if ((int)$row['doc_type_id'] === 14) {
         // P32 signature place + date
         'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dotspan', 'ວັນທີ', $today]],
     ];
+                    } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 55) {
+    // ໃບຢັ້ງຢືນການເສຍຫາຍ (Damage/Loss Certificate, doc_type 1, item 55, code 29)
+    // Single-party certificate: applicant = person reporting damage. Profile from
+    // citizen record; damage description from EAV.
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $opsByAnchor = [
+        // P4 district
+        'PREFIXເມືອງ:' => [['dots', 'ເມືອງ:', $row['district_name'] ?? '']],
+        // P5 taseng + doc ref (same paragraph, one anchor)
+        'PREFIXຕາແສງ:' => [['dots', 'ຕາແສງ:', $row['taseng_name'] ?? ''], ['dots', 'ເລກທີ:', $row['doc_no']]],
+        // P6 unit + date (same paragraph, one anchor)
+        'PREFIXໜ່ວຍ:' => [['dots', 'ໜ່ວຍ:', $row['unit_no'] ?? ''], ['dots', 'ວັນທີ', $today]],
+        // P11 applicant name + DOB
+        'PREFIXໄດ້ມີທ້າວຫຼືນາງ:' => [
+            [['dots', 'ທ້າວຫຼືນາງ:', trim($row['first_name'] . ' ' . $row['last_name'])],
+             ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $row['dob'] ? date('d/m/Y', strtotime($row['dob'])) : '']],
+        ],
+        // P12 profile continuation
+        'PREFIXເຊື້ອຊາດ' => [
+            [['dots', 'ເຊື້ອຊາດ', $originName],
+             ['dots', 'ສັນຊາດ', $nationalityName],
+             ['dots', 'ຊົນເຜົ່າ', $ethnicityName],
+             ['dots', 'ສາສະໜາ', $religionName],
+             ['dots', 'ອາຊີບ:', $occupationName],
+             ['dots', 'ບ້ານ', $row['village_name']],
+             ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+             ['dots', 'ແຂວງ:', $row['province_name'] ?? '']],
+        ],
+        // P13 damage description
+        'PREFIXໄດ້ມາແຈ້ງຄວາມວ່າຕົນໄດ້ເຮັດ' => [
+            [['dots', 'ໄດ້ມາແຈ້ງຄວາມວ່າຕົນໄດ້ເຮັດ', $eavGet('damage_desc')]],
+        ],
+        // P17 signature place + date
+        'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dots', 'ວັນທີ:', $today]],
+    ];
                     } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 54) {
     // ໃບຍົກຍ້າຍ (Relocation Certificate, doc_type 1, item 54, code 28)
     // Single-party certificate: applicant = person being transferred. Name/DOB from
@@ -952,13 +989,13 @@ $fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂ
             ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_'
                 : ((int)$row['doc_item_id'] === 30 ? 'ໃບສັນຍາເຊົ່າ_'
                     : 'ສັນຍາກູ້ຢືມເງິນ_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_'))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : ((int)$row['doc_item_id'] === 55 ? 'ໃບຢັ້ງຢືນການເສຍຫາຍ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 $ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_'
                 : ((int)$row['doc_item_id'] === 30 ? 'lease_contract_'
                     : 'loan_contract_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : 'residence_cert_'))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : ((int)$row['doc_item_id'] === 55 ? 'damage_cert_' : 'residence_cert_')))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
