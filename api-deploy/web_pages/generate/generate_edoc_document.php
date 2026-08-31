@@ -102,7 +102,9 @@ $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ?
 $today = date('d/m/Y');
 
 // ── open template copy (choose by doc type) ─────────────────────────
-$template = ($row['doc_type_id'] == 14)
+$template = ($row['doc_type_id'] == 2)
+    ? '/var/www/html/edoc/Doc_files/02-20-41 ໃບຄຳຮ້ອງ ຂໍຈົດທະບຽນແຕ່ງດອງ.docx'
+    : (($row['doc_type_id'] == 14)
     ? '/var/www/html/edoc/Doc_files/31 ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ.docx'
     : ($row['doc_type_id'] == 6
         ? (((int)$row['doc_item_id'] === 53)
@@ -120,7 +122,7 @@ $template = ($row['doc_type_id'] == 14)
                                 ? '/var/www/html/edoc/Doc_files/01-28-22 ໃບຍົກຍ້າຍ.docx'
                                 : (((int)$row['doc_item_id'] === 55)
                                     ? '/var/www/html/edoc/Doc_files/01-29-29 ໃບຢັ້ງຢືນການເສຍຫາຍ.docx'
-                                    : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')))));
+                                    : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'))))));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -520,6 +522,61 @@ if ((int)$row['doc_type_id'] === 14) {
                                     ['dots', 'ຈຳນວນ:', $eavGet('loan_interest_pct')],
                                 ],
                             ];
+                    } elseif ((int)$row['doc_type_id'] === 2 && (int)$row['doc_item_id'] === 20) {
+    // ໃບຄຳຮ້ອງ ຂໍຈົດທະບຽນແຕ່ງດອງ (Marriage Registration Request, doc_type 2, item 20)
+    // Two-party: groom = applicant citizen; bride = buyer citizen (buyer_id).
+    // Recipient P5, engagement-note ref P11, groom profile P13, bride profile P14.
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $groomName = trim($row['first_name'] . ' ' . $row['last_name']);
+    $groomAge  = $row['dob'] ? floor((time() - strtotime($row['dob'])) / 31536000) : '';
+    $brideName = trim(($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
+    $brideAge  = $row['buyer_dob'] ? floor((time() - strtotime($row['buyer_dob'])) / 31536000) : '';
+    $brideNat  = resolveName($conn, 'edoc_country', $row['buyer_nationality'] ?? '');
+    $brideOcc  = resolveName($conn, 'edoc_occupation', $row['buyer_occupation'] ?? '');
+    $opsByAnchor = [
+        // P5 recipient + taseng
+        'PREFIXຮຽນ:' => [['dots', 'ທ່ານ', $eavGet('marry_recipient')], ['dots', 'ຕາແສງ', $row['taseng_name'] ?? '']],
+        // P11 engagement-note ref
+        'PREFIXສະບັບເລກທີ' => [['dots', 'ສະບັບເລກທີ', $eavGet('marry_sou_khor_no')], ['dots', 'ລົງວັນທີ', fmtDate($eavGet('marry_sou_khor_date'))]],
+        // P13 groom profile (applicant) + bride name at line end
+        'PREFIXພວກຂ້າພະເຈົ້າທ້າວ' => [
+            [['dots', 'ທ້າວ', $groomName],
+             ['dots', 'ວັນ,ເດືອນ,ປີເກິດ', $row['dob'] ? date('d/m/Y', strtotime($row['dob'])) : ''],
+             ['dots', 'ອາຊີບ', $occupationName],
+             ['dots', 'ເຊື້ອຊາດ', $originName],
+             ['dots', 'ສັນຊາດ', $nationalityName],
+             ['dots', 'ເຊົາເຜົ່າ', $ethnicityName],
+             ['dots', 'ສາສະໜາ', $religionName],
+             ['dots', 'ເຮືອນເລກທີ', $row['house_no'] ?? ''],
+             ['dots', 'ໜ່ວຍ', $row['unit_no'] ?? ''],
+             ['dots', 'ບ້ານ', $row['village_name']],
+             ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+             ['dots', 'ສຳມະໂນຄົວເລກທີ', $eavGet('marry_family_book_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('marry_family_book_date'))],
+             ['dots', 'ເບີໂທລະສັບ', $row['phone']],
+             ['dots', 'ແລະ ນາງ', $brideName]],
+        ],
+        // P14 bride profile continuation (buyer)
+        'PREFIXວັນ,ເດືອນ,ປີເກິດ' => [
+            [['dots', 'ວັນ,ເດືອນ,ປີເກິດ', $row['buyer_dob'] ? date('d/m/Y', strtotime($row['buyer_dob'])) : ''],
+             ['dots', 'ອາຊີບ', $brideOcc],
+             ['dots', 'ເຊື້ອຊາດ', resolveName($conn, 'edoc_ethnicity', $row['buyer_origin'] ?? '')],
+             ['dots', 'ສັນຊາດ', $brideNat],
+             ['dots', 'ເຊົາເຜົ່າ', resolveName($conn, 'edoc_ethnicity', $row['buyer_ethnicity'] ?? '')],
+             ['dots', 'ສາສະໜາ', resolveName($conn, 'edoc_religion', $row['buyer_religion'] ?? '')],
+             ['dots', 'ເຮືອນເລກທີ', $row['buyer_house_no'] ?? ''],
+             ['dots', 'ໜ່ວຍ', $row['buyer_unit_no'] ?? ''],
+             ['dots', 'ບ້ານ', $row['buyer_village_name'] ?? ''],
+             ['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? ''],
+             ['dots', 'ສຳມະໂນຄົວເລກທີ', $eavGet('marry_bride_family_book_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('marry_bride_family_book_date'))],
+             ['dots', 'ເບີໂທລະສັບ', $row['buyer_phone'] ?? '']],
+        ],
+        // P22 signature place + date
+        'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dots', 'ວັນທີ', $today]],
+    ];
                     } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 53) {
                     // ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ (land sale contract, doc_type 6, item 31)
                     // Seller = applicant citizen; Buyer = second citizen (buyer_id).
@@ -995,18 +1052,20 @@ $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
-$fname = ($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
+$fname = ($row['doc_type_id'] == 2) ? 'ໃບຄຳຮ້ອງຂໍຈົດທະບຽນແຕ່ງດອງ_'
+        : (($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_'
                 : ((int)$row['doc_item_id'] === 30 ? 'ໃບສັນຍາເຊົ່າ_'
                     : 'ສັນຍາກູ້ຢືມເງິນ_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : ((int)$row['doc_item_id'] === 55 ? 'ໃບຢັ້ງຢືນການເສຍຫາຍ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
-$ascii = ($row['doc_type_id'] == 14) ? 'land_sale_'
+            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : ((int)$row['doc_item_id'] === 55 ? 'ໃບຢັ້ງຢືນການເສຍຫາຍ_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_'))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+$ascii = ($row['doc_type_id'] == 2) ? 'marriage_request_'
+        : (($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_'
                 : ((int)$row['doc_item_id'] === 30 ? 'lease_contract_'
                     : 'loan_contract_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : ((int)$row['doc_item_id'] === 55 ? 'damage_cert_' : 'residence_cert_')))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : ((int)$row['doc_item_id'] === 55 ? 'damage_cert_' : 'residence_cert_'))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
