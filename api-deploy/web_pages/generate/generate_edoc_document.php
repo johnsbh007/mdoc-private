@@ -918,10 +918,10 @@ if ((int)$row['doc_type_id'] === 14) {
             [['dots', 'ທ້າວ ຫຼື ນາງ', $eavGet('divorce_child2')]],
             [['dots', 'ທ້າວ ຫຼື ນາງ', $eavGet('divorce_child3')]],
         ],
-        // P39 custody + support
+        // P39 custody + support (dots sit after "ລູກ" and "ລ້ຽງດູລູກ")
         'PREFIXຄູ່ຜົວ-ເມຍ ຕົກລົງ' => [
-            [['dots', 'ຄູ່ຜົວ-ເມຍ ຕົກລົງ', $eavGet('divorce_custody')],
-             ['dots', 'ຮັບຜິດຊອບລ້ຽງດູລູກ', $eavGet('divorce_support')]],
+            [['dots', 'ລູກ', $eavGet('divorce_custody')],
+             ['dots', 'ລ້ຽງດູລູກ', $eavGet('divorce_support')]],
         ],
         // P40-43 assets/debts
         'PREFIXຊັບເດີມ' => [['dots', 'ຊັບເດີມ', $eavGet('divorce_original')]],
