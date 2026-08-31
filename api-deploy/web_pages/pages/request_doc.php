@@ -263,6 +263,11 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
     $tab2Label = '2. ຜູ້ຍິງ (Bride)';
     $tab3Label = '3. ລາຍລະອຽດຄຳຮ້ອງ (Request details)';
     $party2Label = 'ເຈົ້າສາວ (Bride)';
+} elseif ($item['id'] == 58) { // divorce record
+    $tab1Label = '1. ຜົວ (Husband)';
+    $tab2Label = '2. ເມຍ (Wife)';
+    $tab3Label = '3. ລາຍລະອຽດບັນທຶກ (Record details)';
+    $party2Label = 'ເມຍ (Wife)';
 }
 ?>
 
@@ -273,7 +278,7 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-buyer" data-bs-toggle="tab" data-bs-target="#p-buyer" type="button" role="tab"><?= $tab2Label ?></button>
         </li>
-<?php if (!in_array($item['id'], [52, 28, 53, 30, 20], true)): /* hide the party-2 tab for single-party items */ ?>
+<?php if (!in_array($item['id'], [52, 28, 53, 30, 20, 58], true)): /* hide the party-2 tab for single-party items */ ?>
         <style>#tab-buyer { display:none !important; } #p-buyer { display:none !important; }</style>
 <?php endif; ?>
         <li class="nav-item" role="presentation">

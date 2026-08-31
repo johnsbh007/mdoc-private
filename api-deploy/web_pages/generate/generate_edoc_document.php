@@ -102,7 +102,9 @@ $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ?
 $today = date('d/m/Y');
 
 // ── open template copy (choose by doc type) ─────────────────────────
-$template = ($row['doc_type_id'] == 4)
+$template = ($row['doc_type_id'] == 5)
+    ? '/var/www/html/edoc/Doc_files/05-26-40 ບົດບັນທຶກການຢ່າຮ້າງ.docx'
+    : (($row['doc_type_id'] == 4)
     ? '/var/www/html/edoc/Doc_files/04-04 ໃບແຈ້ງເສຍຫາຍ.docx'
     : (($row['doc_type_id'] == 2)
     ? '/var/www/html/edoc/Doc_files/02-20-41 ໃບຄຳຮ້ອງ ຂໍຈົດທະບຽນແຕ່ງດອງ.docx'
@@ -128,7 +130,7 @@ $template = ($row['doc_type_id'] == 4)
                                         ? '/var/www/html/edoc/Doc_files/01-30 ໃບຢັ້ງຢືນຄວາມເປັນໂສດ.docx'
                                         : (((int)$row['doc_item_id'] === 57)
                                             ? '/var/www/html/edoc/Doc_files/01-31-35 ໃບຢັ້ງຢືນລູກທາງ (ລູກຊູ້).docx'
-                                            : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx')))))))));
+                                            : '/var/www/html/edoc/Doc_files/32 ໃບຢັ້ງຢືນທີ່ຢູ່ (1).docx'))))))))));
 if (!file_exists($template)) { die('Template not found'); }
 $tmp = tempnam(sys_get_temp_dir(), 'cert_') . '.docx';
 copy($template, $tmp);
@@ -832,6 +834,105 @@ if ((int)$row['doc_type_id'] === 14) {
         // P24 signature place + date
         'PREFIXທີ່' => [['dots', 'ທີ່', $row['province_name'] ?? ''], ['dots', 'ວັນທີ:', $today]],
     ];
+                    } elseif ((int)$row['doc_type_id'] === 5 && (int)$row['doc_item_id'] === 58) {
+    // ບົດບັນທຶກການຢ່າຮ້າງ (Divorce Record, doc_type 5, item 58, code 26)
+    // Two-party memo: husband = applicant citizen (ໂຈດ); wife = buyer citizen (ຈຳເລີຍ).
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $husbandName = trim($row['first_name'] . ' ' . $row['last_name']);
+    $wifeName = trim(($row['buyer_first_name'] ?? '') . ' ' . ($row['buyer_last_name'] ?? ''));
+    $opsByAnchor = [
+        // P3 district header (trailing space to distinguish from P23/P26 dot-lines)
+        'PREFIXເມືອງ ' => [['dots', 'ເມືອງ', $row['district_name'] ?? '']],
+        // P4 taseng
+        'PREFIXຕາແສງ' => [['dots', 'ຕາແສງ', $row['taseng_name'] ?? '']],
+        // P5 doc ref + P6 date
+        'ເລກທີ' => [['dots', 'ເລກທີ', $row['doc_no']]],
+        'PREFIXລົງວັນທີ' => [['dots', 'ລົງວັນທີ', $today]],
+        // P10 education memo ref
+        'PREFIXອີງຕາມ ບົດບັນທຶກການສຶກສາອົບຮົມຄູ່ຜົວ-ເມຍ' => [
+            [['dots', 'ສະບັບເລກທີ', $eavGet('divorce_edu_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('divorce_edu_date'))]],
+        ],
+        // P12 meeting place/time/date
+        'PREFIXທີ່ຫ້ອງການບ້ານ' => [
+            [['dots', 'ທີ່ຫ້ອງການບ້ານ', $eavGet('divorce_meet_village')],
+             ['dots', 'ເວລາ', $eavGet('divorce_meet_time')],
+             ['dots', 'ຂອງວັນທີ', fmtDate($eavGet('divorce_meet_date'))]],
+        ],
+        // P21 husband name + DOB + occupation (applicant).
+        // Note: child rows start "ທ້າວ ຫຼື..." while husband line is "ທ້າວ........",
+        // so anchor "ທ້າວ." (with dot) uniquely matches the husband line.
+        'PREFIXທ້າວ.' => [
+            [['dots', 'ທ້າວ', $husbandName],
+             ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $row['dob'] ? date('d/m/Y', strtotime($row['dob'])) : ''],
+             ['dots', 'ອາຊີບ', $occupationName]],
+        ],
+        // P22 husband profile continuation + P25 wife profile continuation
+        // (identical ເຊື້ອຊາດ... prefixes -> occurrence-aware)
+        'PREFIXເຊື້ອຊາດ' => [
+            [['dots', 'ເຊື້ອຊາດ', $originName],
+             ['dots', 'ສັນຊາດ', $nationalityName],
+             ['dots', 'ເຊົາເຜົ່າ', $ethnicityName],
+             ['dots', 'ສາສະໜາ', $religionName],
+             ['dots', 'ໜ່ວຍ', $row['unit_no'] ?? ''],
+             ['dots', 'ບ້ານ', $row['village_name']]],
+            [['dots', 'ເຊື້ອຊາດ', resolveName($conn, 'edoc_ethnicity', $row['buyer_origin'] ?? '')],
+             ['dots', 'ສັນຊາດ', resolveName($conn, 'edoc_country', $row['buyer_nationality'] ?? '')],
+             ['dots', 'ເຊົາເຜົ່າ', resolveName($conn, 'edoc_ethnicity', $row['buyer_ethnicity'] ?? '')],
+             ['dots', 'ສາສະໜາ', resolveName($conn, 'edoc_religion', $row['buyer_religion'] ?? '')],
+             ['dots', 'ໜ່ວຍ', $row['buyer_unit_no'] ?? ''],
+             ['dots', 'ບ້ານ', $row['buyer_village_name'] ?? '']],
+        ],
+        // P23 husband + P26 wife district/province/family/phone (identical ເມືອງ... prefixes)
+        'PREFIXເມືອງ.' => [
+            [['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+             ['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $eavGet('divorce_family_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('divorce_family_date'))],
+             ['dots', 'ເບີໂທລະສັບ', $row['phone']]],
+            [['dots', 'ເມືອງ', $row['buyer_district_name'] ?? ''],
+             ['dots', 'ແຂວງ', $row['buyer_province_name'] ?? ''],
+             ['dots', 'ຂື້ນສໍາມະໂນຄົວເລກທີ', $eavGet('divorce_bfamily_no')],
+             ['dots', 'ລົງວັນທີ', fmtDate($eavGet('divorce_bfamily_date'))],
+             ['dots', 'ເບີໂທລະສັບ', $row['buyer_phone'] ?? '']],
+        ],
+        // P24 wife name + DOB + occupation (buyer) + P46 closing wife name
+                'PREFIXນາງ' => [
+                    [['dots', 'ນາງ', $wifeName],
+                     ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $row['buyer_dob'] ? date('d/m/Y', strtotime($row['buyer_dob'])) : ''],
+                     ['dots', 'ອາຊີບ', resolveName($conn, 'edoc_occupation', $row['buyer_occupation'] ?? '')]],
+                    [['dots', 'ນາງ', $wifeName]],
+                ],
+        // P32 mediation village + think months
+        'PREFIXຄະນະໜ່ວຍໄກ່ເກັ່ຍຂໍ້ຂັດແຍ່ງຂັ້ນບ້ານ' => [
+            [['dots', 'ຄະນະໜ່ວຍໄກ່ເກັ່ຍຂໍ້ຂັດແຍ່ງຂັ້ນບ້ານ', $eavGet('divorce_med_village')],
+             ['dots', 'ເປັນເວລາ', $eavGet('divorce_think_months')]],
+        ],
+        // P33 children count
+        'PREFIXຄູ່ຜົວ-ເມຍມີລູກຮ່ວມກັນ' => [
+            [['dots', 'ຄູ່ຜົວ-ເມຍມີລູກຮ່ວມກັນ', $eavGet('divorce_children')]],
+        ],
+        // P34-38 child rows (identical ທ້າວ ຫຼື ນາງ... prefixes -> occurrence-aware)
+        'PREFIXທ້າວ ຫຼື ນາງ' => [
+            [['dots', 'ທ້າວ ຫຼື ນາງ', $eavGet('divorce_child1')]],
+            [['dots', 'ທ້າວ ຫຼື ນາງ', $eavGet('divorce_child2')]],
+            [['dots', 'ທ້າວ ຫຼື ນາງ', $eavGet('divorce_child3')]],
+        ],
+        // P39 custody + support
+        'PREFIXຄູ່ຜົວ-ເມຍ ຕົກລົງ' => [
+            [['dots', 'ຄູ່ຜົວ-ເມຍ ຕົກລົງ', $eavGet('divorce_custody')],
+             ['dots', 'ຮັບຜິດຊອບລ້ຽງດູລູກ', $eavGet('divorce_support')]],
+        ],
+        // P40-43 assets/debts
+        'PREFIXຊັບເດີມ' => [['dots', 'ຊັບເດີມ', $eavGet('divorce_original')]],
+        'PREFIXສິນສົມສ້າງ' => [['dots', 'ສິນສົມສ້າງ', $eavGet('divorce_joint')]],
+        'PREFIXໜີ້ຕ້ອງຮັບ' => [['dots', 'ໜີ້ຕ້ອງຮັບ', $eavGet('divorce_debt_pay')]],
+        'PREFIXໜີ້ຕ້ອງສົ່ງ' => [['dots', 'ໜີ້ຕ້ອງສົ່ງ', $eavGet('divorce_debt_send')]],
+        // P45 closing husband name
+        'PREFIXດັ່ງນັ້ນຄະນະໜ່ວຍໄກ່ເກັ່ຍ' => [
+            [['dots', 'ທ້າວ', $husbandName]],
+        ],
+    ];
                     } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 56) {
     // ໃບຢັ້ງຢືນຄວາມເປັນໂສດ (Single Status Certificate, doc_type 1, item 56, code 30)
     // Single-party certificate: applicant profile from citizen record; father +
@@ -1192,22 +1293,24 @@ $zip->addFromString('word/document.xml', $newXml);
 $zip->close();
 
 // ── stream as download, or store to edoc_file_store (save=1) ───────
-$fname = ($row['doc_type_id'] == 4) ? 'ໃບແຈ້ງເສຍຫາຍ_'
+$fname = ($row['doc_type_id'] == 5) ? 'ບົດບັນທຶກການຢ່າຮ້າງ_'
+        : (($row['doc_type_id'] == 4) ? 'ໃບແຈ້ງເສຍຫາຍ_'
         : (($row['doc_type_id'] == 2) ? 'ໃບຄຳຮ້ອງຂໍຈົດທະບຽນແຕ່ງດອງ_'
         : (($row['doc_type_id'] == 14) ? 'ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'ສັນຍາຊື້-ຂາຍ ກຳມະສິດທີ່ດິນ_'
                 : ((int)$row['doc_item_id'] === 30 ? 'ໃບສັນຍາເຊົ່າ_'
                     : 'ສັນຍາກູ້ຢືມເງິນ_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : ((int)$row['doc_item_id'] === 55 ? 'ໃບຢັ້ງຢືນການເສຍຫາຍ_' : ((int)$row['doc_item_id'] === 56 ? 'ໃບຢັ້ງຢືນຄວາມເປັນໂສດ_' : ((int)$row['doc_item_id'] === 57 ? 'ໃບຢັ້ງຢືນລູກທາງ (ລູກຊູ້)_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_')))))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
-$ascii = ($row['doc_type_id'] == 4) ? 'damage_notify_'
+            : (((int)$row['doc_item_id'] === 5 ? 'ໃບຢັ້ງຢືນສາຍຍາດ_' : ((int)$row['doc_item_id'] === 8 ? 'ຊີວະປະຫວັດທົ່ວໄປ_' : ((int)$row['doc_item_id'] === 54 ? 'ໃບຍົກຍ້າຍ_' : ((int)$row['doc_item_id'] === 55 ? 'ໃບຢັ້ງຢືນການເສຍຫາຍ_' : ((int)$row['doc_item_id'] === 56 ? 'ໃບຢັ້ງຢືນຄວາມເປັນໂສດ_' : ((int)$row['doc_item_id'] === 57 ? 'ໃບຢັ້ງຢືນລູກທາງ (ລູກຊູ້)_' : 'ໃບຢັ້ງຢືນທີ່ຢູ່_'))))))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+$ascii = ($row['doc_type_id'] == 5) ? 'divorce_record_'
+        : (($row['doc_type_id'] == 4) ? 'damage_notify_'
         : (($row['doc_type_id'] == 2) ? 'marriage_request_'
         : (($row['doc_type_id'] == 14) ? 'land_sale_'
         : ($row['doc_type_id'] == 6
             ? ((int)$row['doc_item_id'] === 53 ? 'land_sale_contract_'
                 : ((int)$row['doc_item_id'] === 30 ? 'lease_contract_'
                     : 'loan_contract_'))
-            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : ((int)$row['doc_item_id'] === 55 ? 'damage_cert_' : ((int)$row['doc_item_id'] === 56 ? 'single_status_cert_' : ((int)$row['doc_item_id'] === 57 ? 'foster_child_cert_' : 'residence_cert_')))))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
+            : (((int)$row['doc_item_id'] === 5 ? 'kinship_cert_' : ((int)$row['doc_item_id'] === 8 ? 'biography_' : ((int)$row['doc_item_id'] === 54 ? 'relocation_cert_' : ((int)$row['doc_item_id'] === 55 ? 'damage_cert_' : ((int)$row['doc_item_id'] === 56 ? 'single_status_cert_' : ((int)$row['doc_item_id'] === 57 ? 'foster_child_cert_' : 'residence_cert_'))))))))))) . ($row['doc_no'] ?? $doc_id) . '.docx';
 
 $save = (int)($_GET['save'] ?? 0);
 if ($save === 1) {
