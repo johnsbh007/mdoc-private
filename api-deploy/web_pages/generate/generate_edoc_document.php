@@ -969,9 +969,20 @@ foreach ($paras as $p) {
         $c->textContent = preg_replace('/\s{2,}/', ' ', $c->textContent);
         // collapse doubled commas that fillDots produced (template comma + fillDots ', ' suffix)
         $c->textContent = preg_replace('/,\s*,/', ',', $c->textContent);
-        // tidy "ບ້ານ ," -> "ບ້ານ" when the value itself was empty
+        // tidy ບ້ານ , -> ບ້ານ when the value itself was empty
         $c->textContent = preg_replace('/\s+,\s*$/u', '', $c->textContent);
+        // remove comma that precedes a slash (doc-ref fraction artifact: 523, / -> 523 /)
+        $c->textContent = preg_replace('/,\s*\//', '/', $c->textContent);
       }
+    }
+  }
+}
+// remove trailing comma+space at the very end of each paragraph (template artifact)
+foreach ($paras as $p) {
+  foreach (wRuns($p) as $r) {
+    $last = $r->lastChild;
+    if ($last && $last->localName === 't') {
+      $last->textContent = preg_replace('/,\s*$/u', '', $last->textContent);
     }
   }
 }
