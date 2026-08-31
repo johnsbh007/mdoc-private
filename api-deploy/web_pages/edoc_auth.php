@@ -41,7 +41,7 @@ function edoc_can_manage_users() { return edoc_can('can_manage_users'); }
  *   52 = ໃບຢັ້ງຢືນຊື້-ຂາຍ ທີ່ດິນ (land sell-purchase, doc_type 14, template 31)
  */
 function edoc_item_implemented($docItemId) {
-    return in_array((int)$docItemId, [1, 5, 8, 20, 28, 30, 52, 53, 54, 55], true);
+    return in_array((int)$docItemId, [1, 5, 8, 20, 28, 30, 52, 53, 54, 55, 56], true);
 }
 
 /**
