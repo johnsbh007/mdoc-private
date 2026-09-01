@@ -144,6 +144,22 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     $occupationName=resolveName($conn,'edoc_occupation',$row['occupation']);
     $paras=$dom->getElementsByTagNameNS($ns,'p');
     $occurrence=[];
+    // Resolve occupation codes / village ids to display names (EAV now stores
+    // occupation CODE + village ID). Mirrors the generator's kinship branch.
+    $kinOcc = function($v) use ($conn) { return $v===''?'':resolveName($conn,'edoc_occupation',$v); };
+    $kinVil = function($v) use ($conn) {
+      if ($v===''||$v===null) return '';
+      if (is_numeric($v)) { $st=$conn->prepare("SELECT name_lo FROM edoc_village WHERE id=?"); $st->execute([(int)$v]); $n=$st->fetchColumn(); return $n!==false?$n:''; }
+      return $v;
+    };
+    $kinChain = function($v) use ($conn) {
+      $empty=['','','','']; if($v===''||$v===null||!is_numeric($v)) return $empty;
+      $st=$conn->prepare("SELECT v.name_lo,t.name_lo,d.name_lo,p.name_lo FROM edoc_village v JOIN edoc_taseng t ON v.tasseng_id=t.id JOIN edoc_district d ON t.district_id=d.id JOIN edoc_province p ON d.province_id=p.id WHERE v.id=?");
+      $st->execute([(int)$v]); $r=$st->fetch(PDO::FETCH_NUM); return $r?:$empty;
+    };
+    // Spouse GEO: derive ບ້ານ/ເມືອງ/ແຂວງ from village chain (spouse_district/province deactivated).
+    $spV = $eavGet('spouse_village'); $spVName=$spV; $spDName=$eavGet('spouse_district'); $spPName=$eavGet('spouse_province');
+    if (is_numeric($spV)) { $sc=$kinChain($spV); $spVName=$sc[0]; $spDName=$sc[2]; $spPName=$sc[3]; }
     foreach($paras as $p){
       $full=''; foreach(wRuns($p) as $r)$full.=runText($r);
       $trimmed=ltrim($full);
@@ -159,7 +175,6 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
         fillDots($p,'ອາຊີບ',$occupationName);
         fillDots($p,'ມີບັດປະຈຳຕົວເລກທີ',$row['id_card']);
         fillDots($p,'ລົງວັນທີ',fmtDate($row['id_card_issue_date']));
-        fillDots($p,'ອອກໃຫ້ໂດຍ',$eavGet('kin_issued_by'));
         fillDots($p,'ປະຈຸບັນຢູ່ໜ່ວຍ',$row['unit_no']);
         fillDots($p,'ບ້ານ',$row['village_name']);
         fillDots($p,'ເມືອງ',$row['district_name'] ?? '');
@@ -174,7 +189,7 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
         $vils=[$eavGet('father_village'),$eavGet('sp_father_village')];
         if(isset($names[$i])){
           fillDots($p,'ຊື່ພໍ່',$names[$i]); fillDots($p,'ອາຍຸ',$ages[$i]);
-          fillDots($p,'ອາຊີບ',$occs[$i]); fillDots($p,'ບ້ານ',$vils[$i]);
+          fillDots($p,'ອາຊີບ',$kinOcc($occs[$i])); fillDots($p,'ບ້ານ',$kinVil($vils[$i]));
         }
         $occurrence['father']=($i+1);
       }
@@ -187,49 +202,45 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
         $vils=[$eavGet('mother_village'),$eavGet('sp_mother_village')];
         if(isset($names[$i])){
           fillDots($p,'ຊື່ແມ່',$names[$i]); fillDots($p,'ອາຍຸ',$ages[$i]);
-          fillDots($p,'ອາຊີບ',$occs[$i]); fillDots($p,'ບ້ານ',$vils[$i]);
+          fillDots($p,'ອາຊີບ',$kinOcc($occs[$i])); fillDots($p,'ບ້ານ',$kinVil($vils[$i]));
         }
         $occurrence['mother']=($i+1);
       }
-      // P11-P13 siblings (own) — occurrence-aware 0,1,2
-      // P18-P20 siblings (spouse) — occurrence-aware 3,4,5
-      if(strpos($full,'ຊື່.')!==false || strpos($full,'ຊື່')!==false && $full!=='' && strpos($full,'ຊື່ພໍ່')===false && strpos($full,'ຊື່ແມ່')===false && strpos($full,'ຊື່ ແລະ')===false){
-        $i=$occurrence['sibling']??0;
-        $own=[
-          [['sib1_name','sib1_age','sib1_occupation','sib1_village'],['sib2_name','sib2_age','sib2_occupation','sib2_village'],['sib3_name','sib3_age','sib3_occupation','sib3_village']],
-          [['spr1_name','spr1_age','spr1_occupation','spr1_village'],['spr2_name','spr2_age','spr2_occupation','spr2_village'],['spr3_name','spr3_age','spr3_occupation','spr3_village']]
+      // P11-13 siblings (own), P18-20 spouse rels, P22-24 children, P26-28 other rels
+      // — 12 rows in document order, same list as the generator's PREFIXຊື່.
+      if(strpos($full,'ຊື່.')!==false || strpos($full,'ຊື່')!==false && $full!=='' && strpos($full,'ຊື່ພໍ່')===false && strpos($full,'ຊື່ແມ່')===false && strpos($full,'ຊື່ ແລະ')===false && strpos($full,'./')===false){
+        $i=$occurrence['rel']??0;
+        $rels=[
+          ['sib1_name','sib1_age','sib1_occupation','sib1_village'],
+          ['sib2_name','sib2_age','sib2_occupation','sib2_village'],
+          ['sib3_name','sib3_age','sib3_occupation','sib3_village'],
+          ['spr1_name','spr1_age','spr1_occupation','spr1_village'],
+          ['spr2_name','spr2_age','spr2_occupation','spr2_village'],
+          ['spr3_name','spr3_age','spr3_occupation','spr3_village'],
+          ['child1_name','child1_age','child1_occupation','child1_village'],
+          ['child2_name','child2_age','child2_occupation','child2_village'],
+          ['child3_name','child3_age','child3_occupation','child3_village'],
+          ['rel1_name','rel1_age','rel1_occupation','rel1_village'],
+          ['rel2_name','rel2_age','rel2_occupation','rel2_village'],
+          ['rel3_name','rel3_age','rel3_occupation','rel3_village'],
         ];
-        $set=$i<3?0:1; $idx=$i%3;
-        if(isset($own[$set][$idx])){
-          $f=$own[$set][$idx];
+        if(isset($rels[$i])){
+          $f=$rels[$i];
           $val=$eavGet($f[0]);
-          if($val!==''){ fillDots($p,'ຊື່',$val); fillDots($p,'ອາຍຸ',$eavGet($f[1])); fillDots($p,'ອາຊີບ',$eavGet($f[2])); fillDots($p,'ບ້ານ',$eavGet($f[3])); }
+          if($val!==''){ fillDots($p,'ຊື່',$val); fillDots($p,'ອາຍຸ',$eavGet($f[1])); fillDots($p,'ອາຊີບ',$kinOcc($eavGet($f[2]))); fillDots($p,'ບ້ານ',$kinVil($eavGet($f[3]))); }
         }
-        $occurrence['sibling']=($i+1);
+        $occurrence['rel']=($i+1);
       }
       // P14 spouse
       if(strpos($full,'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ')!==false){
         fillDots($p,'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ',$eavGet('spouse_name'));
         fillDots($p,'ວັນ,ເດືອນ,ປີເກີດ',$eavGet('spouse_dob')?fmtDate($eavGet('spouse_dob')):'');
         fillDots($p,'ສັນຊາດ',$eavGet('spouse_nationality'));
-        fillDots($p,'ອາຊີບ',$eavGet('spouse_occupation'));
+        fillDots($p,'ອາຊີບ',$kinOcc($eavGet('spouse_occupation')));
         fillDots($p,'ໜ່ວຍ',$eavGet('spouse_unit'));
-        fillDots($p,'ບ້ານ',$eavGet('spouse_village'));
-        fillDots($p,'ເມືອງ',$eavGet('spouse_district'));
-        fillDots($p,'ແຂວງ',$eavGet('spouse_province'));
-      }
-      // P22-P24 children
-      if(strpos($full,'5./')!==false || strpos($full,'5./ ຊື່')!==false) {} // skip header
-      else if(strpos($full,'ຊື່')!==false && strpos($full,'ອາຍຸ')!==false && strpos($full,':')===false){
-        $i=$occurrence['child']??0;
-        $cnames=['child1_name','child2_name','child3_name'];
-        $cages=['child1_age','child2_age','child3_age'];
-        $coccs=['child1_occupation','child1_occupation','child1_occupation'];
-        if(isset($cnames[$i])){
-          $val=$eavGet($cnames[$i]);
-          if($val!=='') fillDots($p,'ຊື່',$val); fillDots($p,'ອາຍຸ',$eavGet($cages[$i])); fillDots($p,'ອາຊີບ',$eavGet($coccs[$i]));
-        }
-        $occurrence['child']=($i+1);
+        fillDots($p,'ບ້ານ',$spVName);
+        fillDots($p,'ເມືອງ',$spDName);
+        fillDots($p,'ແຂວງ',$spPName);
       }
       // signature block
       if(strpos($full,'ຕາງໜ້າ')!==false){

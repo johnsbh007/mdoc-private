@@ -201,6 +201,64 @@ function presetGeo(prefix, c) {
   }
   next();
 }
+// ── kinship village cascades (field_type=VILLAGE): 4-level province→district→taseng→village ──
+// Each cascade uses ids kinv_<fieldid>_province_id / _district_id / _taseng_id / _village_id,
+// and stores the final village_id into the hidden field_<fieldid> input.
+function kinGeoType(id){ const n = id.replace(/^kinv_\d+_/, ''); return {province_id:'province', district_id:'district', taseng_id:'taseng'}[n] || 'province'; }
+function kinNextId(id){ const m = id.match(/^(kinv_\d+_)(province|district|taseng|village)_id$/); if(!m) return null; const seq={province:'district',district:'taseng',taseng:'village'}; return seq[m[2]] ? m[1]+seq[m[2]]+'_id' : null; }
+function kinLoadGeo(parentId, childId) {
+  const parent = document.getElementById(parentId);
+  const child  = document.getElementById(childId);
+  if (!parent || !child) return;
+  const pid = parent.value;
+  let curId = childId;
+  while (curId) {
+    const el = document.getElementById(curId);
+    if (!el) break;
+    el.innerHTML = '<option value="">-- ເລືອກ --</option>';
+    curId = kinNextId(curId);
+  }
+  if (!pid) return;
+  const type = kinGeoType(parentId);
+  $.get('../ajax/search/get_edoc_geo.php', {type, id: pid}, function(res){
+    const r = parseJson(res);
+    if (!r || r.status !== 'success') return;
+    let h = '<option value="">-- ເລືອກ --</option>';
+    r.data.forEach(o => { h += '<option value="'+o.id+'">'+o.name_lo+'</option>'; });
+    child.innerHTML = h;
+  });
+}
+function kinSetVillage(villId, fieldId) {
+  document.getElementById('field_'+fieldId).value = document.getElementById(villId).value;
+}
+// Preset a kinship village cascade from a stored village_id (edit mode).
+function presetKinVillage(fieldId, villageId) {
+  if (!villageId || !document.getElementById('kinv_'+fieldId+'_province_id')) return;
+  $.get('../ajax/search/get_village_chain.php', {village_id: villageId}, function(res){
+    const r = parseJson(res);
+    if (!r || r.status !== 'success') return;
+    const d = r.data;
+    const pv = document.getElementById('kinv_'+fieldId+'_province_id');
+    const dv = document.getElementById('kinv_'+fieldId+'_district_id');
+    const tv = document.getElementById('kinv_'+fieldId+'_taseng_id');
+    const vv = document.getElementById('kinv_'+fieldId+'_village_id');
+    if (pv) { pv.value = d.province_id; }
+    if (dv && d.district_id) {
+      dv.innerHTML = '<option value="">-- ເລືອກ --</option><option value="'+d.district_id+'" selected>'+d.district_name+'</option>';
+    }
+    if (tv && d.taseng_id) {
+      tv.innerHTML = '<option value="">-- ເລືອກ --</option><option value="'+d.taseng_id+'" selected>'+d.taseng_name+'</option>';
+    }
+    if (vv && d.village_id) {
+      vv.innerHTML = '<option value="">-- ເລືອກ --</option><option value="'+d.village_id+'" selected>'+d.village_name+'</option>';
+    }
+    document.getElementById('field_'+fieldId).value = d.village_id;
+  });
+}
+// Populate the province select of every kinship village cascade.
+function fillKinProvinces() {
+  $('[id^="kinv_"][id$="_province_id"]').each(function(){ fillSelect(this.id, PROVINCES, 'ເລືອກແຂວງ'); });
+}
 </script>
 
 <div class="content-wrapper p-3">
@@ -243,6 +301,7 @@ $tab1Label = '1. ຂໍ້ມູນ (Person)';
 $tab2Label = '2. ຂໍ້ມູນ (Party 2)';
 $tab3Label = '3. ຂໍ້ມູນເອກະສານ (Document)';
 $party2Label = 'ຜູ້ຊື້ (Buyer)';
+if ($item['id'] == 5) { $tab3Label = '2. ຂໍ້ມູນເອກະສານ (Document)'; } // kinship: single-party -> doc tab is 2nd
 if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sale contract
     $tab1Label = '1. ຂໍ້ມູນຜູ້ຂາຍ (Seller)';
     $tab2Label = '2. ຂໍ້ມູນຜູ້ຊື້ (Buyer)';
@@ -573,17 +632,47 @@ function loadDocFields() {
         h += `<div class="mb-2"><label class="form-label">${lbl}</label><textarea name="${name}" class="form-control" rows="2"></textarea></div>`;
       } else if (f.field_type === 'DATE') {
         h += `<div class="mb-2"><label class="form-label">${lbl}</label><input type="date" name="${name}" class="form-control"></div>`;
+      } else if (f.field_type === 'OCCUPATION') {
+        // dropdown from edoc_occupation (save code, show name)
+        let opts = '<option value="">-- ເລືອກ --</option>';
+        for (const code in LOOKUP.occupation) { opts += '<option value="'+code+'">'+LOOKUP.occupation[code]+'</option>'; }
+        h += `<div class="mb-2"><label class="form-label">${lbl}</label><select name="${name}" class="form-select">${opts}</select></div>`;
+      } else if (f.field_type === 'VILLAGE') {
+        // 4-level cascade province→district→taseng→village; store village_id in field_<id>
+        const fid = f.id;
+        h += `
+        <div class="card mb-2 border">
+          <div class="card-header py-1 bg-light"><strong>${lbl}</strong></div>
+          <div class="card-body py-2">
+            <div class="row g-2">
+              <div class="col-md-3"><label class="form-label small">ແຂວງ (Province)</label><select id="kinv_${fid}_province_id" class="form-select form-select-sm" onchange="kinLoadGeo('kinv_${fid}_province_id','kinv_${fid}_district_id')"></select></div>
+              <div class="col-md-3"><label class="form-label small">ເມືອງ (District)</label><select id="kinv_${fid}_district_id" class="form-select form-select-sm" onchange="kinLoadGeo('kinv_${fid}_district_id','kinv_${fid}_taseng_id')"></select></div>
+              <div class="col-md-3"><label class="form-label small">ຕາແສງ (Taseng)</label><select id="kinv_${fid}_taseng_id" class="form-select form-select-sm" onchange="kinLoadGeo('kinv_${fid}_taseng_id','kinv_${fid}_village_id')"></select></div>
+              <div class="col-md-3"><label class="form-label small">ບ້ານ (Village)</label><select id="kinv_${fid}_village_id" class="form-select form-select-sm" onchange="kinSetVillage('kinv_${fid}_village_id',${fid})"></select></div>
+            </div>
+            <input type="hidden" name="${name}" id="field_${fid}" value="">
+          </div>
+        </div>`;
       } else {
         h += `<div class="mb-2"><label class="form-label">${lbl}</label><input type="text" name="${name}" class="form-control"></div>`;
       }
     });
     document.getElementById('docFields').innerHTML = h;
     fillSelect('parent_province_id', PROVINCES, 'ເລືອກແຂວງ');
+    fillKinProvinces();
 
     if (EDIT_FORM && Object.keys(EDIT_FORM).length) {
       Object.entries(EDIT_FORM).forEach(([name, val]) => {
         const el = document.querySelector('#docFields [name="' + name + '"]');
         if (el) el.value = val;
+      });
+      // For each kinship village cascade that already has a stored village_id,
+      // restore the 4-level chain (province→district→taseng→village).
+      document.querySelectorAll('#docFields input[type="hidden"][name^="field_"][value]').forEach(function(hv){
+        const fid = (hv.name.match(/^field_(\d+)$/) || [])[1];
+        if (fid && hv.value && document.getElementById('kinv_'+fid+'_province_id')) {
+          presetKinVillage(fid, hv.value);
+        }
       });
     }
     // Pre-fill structured parents geo directly from EDIT_DATA (residence table

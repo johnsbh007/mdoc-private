@@ -112,6 +112,20 @@ $parentDistrict  = geoNameId($conn, 'edoc_district',  $res['parents_district_id'
 $parentProvince  = geoNameId($conn, 'edoc_province',  $res['parents_province_id']  ?? null);
 
 function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
+// resolve a village value (id → name, or pass-through for legacy text)
+function kinVillageName($conn, $v) {
+  if ($v === '' || $v === null) return '';
+  if (is_numeric($v)) { $st=$conn->prepare("SELECT name_lo FROM edoc_village WHERE id=?"); $st->execute([(int)$v]); $n=$st->fetchColumn(); return $n!==false?$n:''; }
+  return $v;
+}
+// resolve a village id → [village, taseng, district, province] names
+function kinVillageChain($conn, $v) {
+  $empty = ['', '', '', ''];
+  if ($v === '' || $v === null || !is_numeric($v)) return $empty;
+  $st=$conn->prepare("SELECT v.name_lo, t.name_lo, d.name_lo, p.name_lo FROM edoc_village v JOIN edoc_taseng t ON v.tasseng_id=t.id JOIN edoc_district d ON t.district_id=d.id JOIN edoc_province p ON d.province_id=p.id WHERE v.id=?");
+  $st->execute([(int)$v]); $r=$st->fetch(PDO::FETCH_NUM);
+  return $r ?: $empty;
+}
 
 $title = ($row['gender'] === 'M') ? 'ທ້າວ' : (($row['gender'] === 'F') ? 'ນາງ' : '');
 $today = date('d/m/Y');
@@ -413,66 +427,73 @@ if ((int)$row['doc_type_id'] === 14) {
         'ທິດຕາເວັນຕົກ' => [['dots', 'ທິດຕາເວັນຕົກ ຕິດກັບ', $eavGet('border_west_neighbor')], ['dots', 'ໄລຍະ', $eavGet('border_west_meters')]],
     ];
     } elseif ((int)$row['doc_type_id'] === 1 && (int)$row['doc_item_id'] === 5) {
-        // ໃບຢັ້ງຢືນສາຍຍາດ (kinship certificate, item 5)
-        // Applicant block from the citizen record; relatives from EAV fields.
-        // Identical ຊື່/ຊື່ພໍ່/ຊື່ແມ່ rows appear twice (own family then spouse's family)
-        // -> occurrence-aware PREFIX lists, in document order.
-        $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
-        $applicantName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
-        $opsByAnchor = [
-            'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
-            // P7 applicant (line starts ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ...)
-            'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ' => [
-                ['phrase', 'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດນໍາໃຊ້ທີ່ດິນ', $applicantName],
-                ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])],
-                ['dots', 'ສັນຊາດ', $nationalityName],
-                ['dots', 'ອາຊີບ', $occupationName],
-                ['dots', 'ມີບັດປະຈຳຕົວເລກທີ', $row['id_card']],
-                ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])],
-                ['dots', 'ອອກໃຫ້ໂດຍ', $eavGet('kin_issued_by')],
-                ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['unit_no']],
-                ['dots', 'ບ້ານ', $row['village_name']],
-                ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
-                ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
-            ],
-            // P9 father (own) / P16 father (spouse's) — occurrence 0,1
-            'PREFIXຊື່ພໍ່' => [
-                [['dots', 'ຊື່ພໍ່', $eavGet('father_name')], ['dots', 'ອາຍຸ', $eavGet('father_age')], ['dots', 'ອາຊີບ', $eavGet('father_occupation')], ['dots', 'ບ້ານ', $eavGet('father_village')]],
-                [['dots', 'ຊື່ພໍ່', $eavGet('sp_father_name')], ['dots', 'ອາຍຸ', $eavGet('sp_father_age')], ['dots', 'ອາຊີບ', $eavGet('sp_father_occupation')], ['dots', 'ບ້ານ', $eavGet('sp_father_village')]],
-            ],
-            // P10 mother (own) / P17 mother (spouse's) — occurrence 0,1
-            'PREFIXຊື່ແມ່' => [
-                [['dots', 'ຊື່ແມ່', $eavGet('mother_name')], ['dots', 'ອາຍຸ', $eavGet('mother_age')], ['dots', 'ອາຊີບ', $eavGet('mother_occupation')], ['dots', 'ບ້ານ', $eavGet('mother_village')]],
-                [['dots', 'ຊື່ແມ່', $eavGet('sp_mother_name')], ['dots', 'ອາຍຸ', $eavGet('sp_mother_age')], ['dots', 'ອາຊີບ', $eavGet('sp_mother_occupation')], ['dots', 'ບ້ານ', $eavGet('sp_mother_village')]],
-            ],
-            // P11-13 siblings (own), P18-20 spouse rels, P22-24 children, P26-28 other rels — 12 occurrences
-            'PREFIXຊື່' => [
-                [['dots', 'ຊື່', $eavGet('sib1_name')], ['dots', 'ອາຍຸ', $eavGet('sib1_age')], ['dots', 'ອາຊີບ', $eavGet('sib1_occupation')], ['dots', 'ບ້ານ', $eavGet('sib1_village')]],
-                [['dots', 'ຊື່', $eavGet('sib2_name')], ['dots', 'ອາຍຸ', $eavGet('sib2_age')], ['dots', 'ອາຊີບ', $eavGet('sib2_occupation')], ['dots', 'ບ້ານ', $eavGet('sib2_village')]],
-                [['dots', 'ຊື່', $eavGet('sib3_name')], ['dots', 'ອາຍຸ', $eavGet('sib3_age')], ['dots', 'ອາຊີບ', $eavGet('sib3_occupation')], ['dots', 'ບ້ານ', $eavGet('sib3_village')]],
-                [['dots', 'ຊື່', $eavGet('spr1_name')], ['dots', 'ອາຍຸ', $eavGet('spr1_age')], ['dots', 'ອາຊີບ', $eavGet('spr1_occupation')], ['dots', 'ບ້ານ', $eavGet('spr1_village')]],
-                [['dots', 'ຊື່', $eavGet('spr2_name')], ['dots', 'ອາຍຸ', $eavGet('spr2_age')], ['dots', 'ອາຊີບ', $eavGet('spr2_occupation')], ['dots', 'ບ້ານ', $eavGet('spr2_village')]],
-                [['dots', 'ຊື່', $eavGet('spr3_name')], ['dots', 'ອາຍຸ', $eavGet('spr3_age')], ['dots', 'ອາຊີບ', $eavGet('spr3_occupation')], ['dots', 'ບ້ານ', $eavGet('spr3_village')]],
-                [['dots', 'ຊື່', $eavGet('child1_name')], ['dots', 'ອາຍຸ', $eavGet('child1_age')], ['dots', 'ອາຊີບ', $eavGet('child1_occupation')], ['dots', 'ບ້ານ', $eavGet('child1_village')]],
-                [['dots', 'ຊື່', $eavGet('child2_name')], ['dots', 'ອາຍຸ', $eavGet('child2_age')], ['dots', 'ອາຊີບ', $eavGet('child2_occupation')], ['dots', 'ບ້ານ', $eavGet('child2_village')]],
-                [['dots', 'ຊື່', $eavGet('child3_name')], ['dots', 'ອາຍຸ', $eavGet('child3_age')], ['dots', 'ອາຊີບ', $eavGet('child3_occupation')], ['dots', 'ບ້ານ', $eavGet('child3_village')]],
-                [['dots', 'ຊື່', $eavGet('rel1_name')], ['dots', 'ອາຍຸ', $eavGet('rel1_age')], ['dots', 'ອາຊີບ', $eavGet('rel1_occupation')], ['dots', 'ບ້ານ', $eavGet('rel1_village')]],
-                [['dots', 'ຊື່', $eavGet('rel2_name')], ['dots', 'ອາຍຸ', $eavGet('rel2_age')], ['dots', 'ອາຊີບ', $eavGet('rel2_occupation')], ['dots', 'ບ້ານ', $eavGet('rel2_village')]],
-                [['dots', 'ຊື່', $eavGet('rel3_name')], ['dots', 'ອາຍຸ', $eavGet('rel3_age')], ['dots', 'ອາຊີບ', $eavGet('rel3_occupation')], ['dots', 'ບ້ານ', $eavGet('rel3_village')]],
-            ],
-            // P14 spouse
-            'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ' => [
-                ['dots', 'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ', $eavGet('spouse_name')],
-                ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $eavGet('spouse_dob')],
-                ['dots', 'ສັນຊາດ', $eavGet('spouse_nationality')],
-                ['dots', 'ອາຊີບ', $eavGet('spouse_occupation')],
-                ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $eavGet('spouse_unit')],
-                ['dots', 'ບ້ານ', $eavGet('spouse_village')],
-                ['dots', 'ເມືອງ', $eavGet('spouse_district')],
-                ['dots', 'ແຂວງ', $eavGet('spouse_province')],
-            ],
-        ];
-    } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 28) {
+            // ໃບຢັ້ງຢືນສາຍຍາດ (kinship certificate, item 5)
+            // Applicant block from the citizen record; relatives from EAV fields.
+            // Identical ຊື່/ຊື່ພໍ່/ຊື່ແມ່ rows appear twice (own family then spouse's family)
+            // -> occurrence-aware PREFIX lists, in document order.
+            $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+            $applicantName = trim($nameTitle . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+            // Resolve occupation codes and village ids to display names.
+            // EAV fields now store occupation CODE (from edoc_occupation) and village ID (from edoc_village).
+            $kinOcc = function($v) use ($conn) { return $v===''?'':resolveName($conn,'edoc_occupation',$v); };
+            $kinVil = function($v) use ($conn) { return kinVillageName($conn, $v); };
+            // Spouse GEO: derive ບ້ານ/ເມືອງ/ແຂວງ from village chain (spouse_district/province deactivated).
+            $spV = $eavGet('spouse_village');
+            $spVName = $spV; $spDName = $eavGet('spouse_district'); $spPName = $eavGet('spouse_province');
+            if (is_numeric($spV)) { $sc = kinVillageChain($conn, $spV); $spVName = $sc[0]; $spDName = $sc[2]; $spPName = $sc[3]; }
+            $opsByAnchor = [
+                'PREFIXວັນທີ' => [['dots', 'ວັນທີ', $today]],
+                // P7 applicant (line starts ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ...)
+                'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ' => [
+                    ['phrase', 'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດນໍາໃຊ້ທີ່ດິນ', $applicantName],
+                    ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', fmtDate($row['dob'])],
+                    ['dots', 'ສັນຊາດ', $nationalityName],
+                    ['dots', 'ອາຊີບ', $occupationName],
+                    ['dots', 'ມີບັດປະຈຳຕົວເລກທີ', $row['id_card']],
+                    ['dots', 'ລົງວັນທີ', fmtDate($row['id_card_issue_date'])],
+                    ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $row['unit_no']],
+                    ['dots', 'ບ້ານ', $row['village_name']],
+                    ['dots', 'ເມືອງ', $row['district_name'] ?? ''],
+                    ['dots', 'ແຂວງ', $row['province_name'] ?? ''],
+                ],
+                // P9 father (own) / P16 father (spouse's) — occurrence 0,1
+                'PREFIXຊື່ພໍ່' => [
+                    [['dots', 'ຊື່ພໍ່', $eavGet('father_name')], ['dots', 'ອາຍຸ', $eavGet('father_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('father_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('father_village'))]],
+                    [['dots', 'ຊື່ພໍ່', $eavGet('sp_father_name')], ['dots', 'ອາຍຸ', $eavGet('sp_father_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('sp_father_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('sp_father_village'))]],
+                ],
+                // P10 mother (own) / P17 mother (spouse's) — occurrence 0,1
+                'PREFIXຊື່ແມ່' => [
+                    [['dots', 'ຊື່ແມ່', $eavGet('mother_name')], ['dots', 'ອາຍຸ', $eavGet('mother_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('mother_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('mother_village'))]],
+                    [['dots', 'ຊື່ແມ່', $eavGet('sp_mother_name')], ['dots', 'ອາຍຸ', $eavGet('sp_mother_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('sp_mother_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('sp_mother_village'))]],
+                ],
+                // P11-13 siblings (own), P18-20 spouse rels, P22-24 children, P26-28 other rels — 12 occurrences
+                'PREFIXຊື່' => [
+                    [['dots', 'ຊື່', $eavGet('sib1_name')], ['dots', 'ອາຍຸ', $eavGet('sib1_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('sib1_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('sib1_village'))]],
+                    [['dots', 'ຊື່', $eavGet('sib2_name')], ['dots', 'ອາຍຸ', $eavGet('sib2_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('sib2_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('sib2_village'))]],
+                    [['dots', 'ຊື່', $eavGet('sib3_name')], ['dots', 'ອາຍຸ', $eavGet('sib3_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('sib3_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('sib3_village'))]],
+                    [['dots', 'ຊື່', $eavGet('spr1_name')], ['dots', 'ອາຍຸ', $eavGet('spr1_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('spr1_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('spr1_village'))]],
+                    [['dots', 'ຊື່', $eavGet('spr2_name')], ['dots', 'ອາຍຸ', $eavGet('spr2_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('spr2_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('spr2_village'))]],
+                    [['dots', 'ຊື່', $eavGet('spr3_name')], ['dots', 'ອາຍຸ', $eavGet('spr3_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('spr3_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('spr3_village'))]],
+                    [['dots', 'ຊື່', $eavGet('child1_name')], ['dots', 'ອາຍຸ', $eavGet('child1_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('child1_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('child1_village'))]],
+                    [['dots', 'ຊື່', $eavGet('child2_name')], ['dots', 'ອາຍຸ', $eavGet('child2_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('child2_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('child2_village'))]],
+                    [['dots', 'ຊື່', $eavGet('child3_name')], ['dots', 'ອາຍຸ', $eavGet('child3_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('child3_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('child3_village'))]],
+                    [['dots', 'ຊື່', $eavGet('rel1_name')], ['dots', 'ອາຍຸ', $eavGet('rel1_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('rel1_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('rel1_village'))]],
+                    [['dots', 'ຊື່', $eavGet('rel2_name')], ['dots', 'ອາຍຸ', $eavGet('rel2_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('rel2_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('rel2_village'))]],
+                    [['dots', 'ຊື່', $eavGet('rel3_name')], ['dots', 'ອາຍຸ', $eavGet('rel3_age')], ['dots', 'ອາຊີບ', $kinOcc($eavGet('rel3_occupation'))], ['dots', 'ບ້ານ', $kinVil($eavGet('rel3_village'))]],
+                ],
+                // P14 spouse
+                'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ' => [
+                    ['dots', 'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ', $eavGet('spouse_name')],
+                    ['dots', 'ວັນ,ເດືອນ,ປີເກີດ', $eavGet('spouse_dob')],
+                    ['dots', 'ສັນຊາດ', $eavGet('spouse_nationality')],
+                    ['dots', 'ອາຊີບ', $kinOcc($eavGet('spouse_occupation'))],
+                    ['dots', 'ປະຈຸບັນຢູ່ໜ່ວຍ', $eavGet('spouse_unit')],
+                    ['dots', 'ບ້ານ', $spVName],
+                    ['dots', 'ເມືອງ', $spDName],
+                    ['dots', 'ແຂວງ', $spPName],
+                ],
+            ];
+        } elseif ((int)$row['doc_type_id'] === 6 && (int)$row['doc_item_id'] === 28) {
     // ສັນຍາກູ້ຢືມເງິນ (loan contract, doc_type 6, item 28)
     // Party A = applicant (lender ຝ່າຍ ກໍ); Party B = borrower citizen (buyer_id).
     // Two identical "ຂ້າພະເຈົ້າ ຊື່:" lines (P5 = A, P7 = B) -> occurrence-aware.
