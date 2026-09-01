@@ -312,12 +312,12 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
               <select id="gender" class="form-select"><option value="">--</option><option value="M">ຊາຍ</option><option value="F">ຍິງ</option></select>
             </div>
             <div class="col-md-2"><label class="form-label">ວັນເກີດ</label><input type="date" id="dob" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ເບີໂທ</label><input id="phone" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ອີເມວ</label><input id="email" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">ເບີໂທ</label><input id="phone" class="form-control"<?= ($item['id']??0)===5?' style="display:none"':'' ?>></div>
+            <div class="col-md-3"><label class="form-label">ອີເມວ</label><input id="email" class="form-control"<?= ($item['id']??0)===5?' style="display:none"':'' ?>></div>
             <div class="col-md-2"><label class="form-label">ສັນຊາດ (Nationality)</label><select id="nationality" class="form-select"></select></div>
-            <div class="col-md-2"><label class="form-label">ເຊື້ອຊາດ (Origin)</label><select id="origin" class="form-select"></select></div>
-            <div class="col-md-2"><label class="form-label">ຊົນເຜົ່າ (Ethnicity)</label><select id="ethnicity" class="form-select"></select></div>
-            <div class="col-md-2"><label class="form-label">ສາສະໜາ (Religion)</label><select id="religion" class="form-select"></select></div>
+            <div class="col-md-2"><label class="form-label">ເຊື້ອຊາດ (Origin)</label><select id="origin" class="form-select"<?= ($item['id']??0)===5?' style="display:none"':'' ?>></select></div>
+            <div class="col-md-2"><label class="form-label">ຊົນເຜົ່າ (Ethnicity)</label><select id="ethnicity" class="form-select"<?= ($item['id']??0)===5?' style="display:none"':'' ?>></select></div>
+            <div class="col-md-2"><label class="form-label">ສາສະໜາ (Religion)</label><select id="religion" class="form-select"<?= ($item['id']??0)===5?' style="display:none"':'' ?>></select></div>
             <div class="col-md-3"><label class="form-label">ອາຊີບ (Occupation)</label><select id="occupation" class="form-select"></select></div>
             <div class="col-md-3"><label class="form-label">ວັນອອກບັດ</label><input type="date" id="id_card_issue_date" class="form-control"></div>
           </div>
@@ -340,10 +340,11 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
               <label class="form-label">ບ້ານ (Village)</label>
               <select id="village_id" class="form-select"></select>
             </div>
-            <div class="col-md-2"><label class="form-label">ເລກບ້ານ</label><input id="house_no" class="form-control"></div>
+            <div class="col-md-2"<?= ($item['id']??0)===5?' style="display:none"':'' ?>><label class="form-label">ເລກບ້ານ</label><input id="house_no" class="form-control"></div>
             <div class="col-md-2"><label class="form-label">ໜ່ວຍ</label><input id="unit_no" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">ທີ່ຢູ່ເພີ່ມເຕີມ</label><input id="address_line" class="form-control"></div>
+            <div class="col-md-3"<?= ($item['id']??0)===5?' style="display:none"':'' ?>><label class="form-label">ທີ່ຢູ່ເພີ່ມເຕີມ</label><input id="address_line" class="form-control"></div>
           </div>
+          <?php if (($item['id']??0)!==5): /* birth place only shown where the template uses it */ ?>
           <hr>
           <h6>ສະຖານທີ່ເກີດ (Birth place)</h6>
           <div class="row g-2">
@@ -364,6 +365,7 @@ if ($item['id'] == 52 || $item['id'] == 53) { // land-sale certificate / land sa
               <select id="birth_village_id" class="form-select"></select>
             </div>
           </div>
+          <?php endif; ?>
         </div>
 
         <!-- TAB 2: BUYER (real citizen record, keyed by national ID) -->
