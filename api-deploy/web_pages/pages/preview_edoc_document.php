@@ -742,7 +742,7 @@ function pvAlign($align){ switch($align){case 'center':return 'center';case 'rig
 $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລໍຖ້າອະນຸມັດ/Pending Approval','NEEDS_REVISION'=>'ຕ້ອງການປັບປຸງ/Needs Revision','ISSUED'=>'ອະນຸມັດແລ້ວ/Issued','PENDING_PAYMENT'=>'ລໍຖ້າຊໍາລະ/Pending Payment','PAID'=>'ຊໍາລະແລ້ວ/Paid','SIGNED'=>'ເຊັນແລ້ວ/Signed','HANDOVER'=>'ສົ່ງໃຫ້ແລ້ວ/Handover','DOWNLOADED'=>'ດາວໂຫລດແລ້ວ/Downloaded'];
 ?>
 <style>
-.preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:820px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
+.preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:794px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
 .preview-paper p { margin:0 0 4px; }
 .pv-docref { display:flex; justify-content:space-between; align-items:baseline; }
 .pv-docref .pv-docref-left { text-align:left; }
@@ -753,10 +753,19 @@ $labels=['SUBMITTED'=>'ຮັບແລ້ວ/submitted','PENDING_APPROVAL'=>'ລ
 .pv-emblem { text-align:center; margin:0 0 6px; }
 .pv-emblem img { width:1.5cm; height:auto; }
 .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
+.pv-sign + .pv-sign { margin-top:0 !important; }
+.pv-sign:last-of-type { margin-bottom:120px !important; }
 .pv-amp { vertical-align:middle; }
 .pv-vline { border:1px dashed #bbb; }
 .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
 .pv-actions { max-width:820px; margin:0 auto 16px; }
+@media print {
+  @page { size: A4; margin: 15mm 17mm; }
+  body { background:#fff !important; }
+  .preview-paper { max-width:100%; border:none; box-shadow:none; border-radius:0; padding:0; margin:0; }
+  .pv-note, .pv-actions, nav.breadcrumb, .content-wrapper > .breadcrumb { display:none !important; }
+  .preview-paper p { break-inside: avoid; }
+}
 </style>
 <div class="content-wrapper p-3">
   <nav class="breadcrumb mb-2">
