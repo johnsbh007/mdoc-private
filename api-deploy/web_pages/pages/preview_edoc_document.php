@@ -82,34 +82,202 @@ if ((int)$row['doc_type_id'] === 14) {
 
 // ── item 5 (kinship certificate ໃບຢັ້ງຢືນສາຍຍາດ): data-summary preview ──
 if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
+    // ໃບຢັ້ງຢືນສາຍຍາດ (Kinship certificate, item 5) — render template as HTML
     $eav = [];
-    $ev = $conn->prepare("SELECT f.field_label, fd.field_value
+    $ev = $conn->prepare("SELECT f.field_name, fd.field_value
                           FROM edoc_form_data fd
                           JOIN edoc_doc_field f ON f.id = fd.field_id
-                          WHERE fd.doc_id = ? ORDER BY f.sort_order");
+                          WHERE fd.doc_id = ?");
     $ev->execute([$doc_id]);
-    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { if ($r['field_value'] !== '' && $r['field_value'] !== null) { $eav[] = $r; } }
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { $eav[$r['field_name']] = $r['field_value']; }
+    $eavGet = function($k) use ($eav) { return trim((string)($eav[$k] ?? '')); };
+    $template='/var/www/html/edoc/Doc_files/01-05-ໃບຢັ້ງຢືນສາຍຍາດ.docx';
+    if (!file_exists($template)) { die('Template not found'); }
+    $xml = (function() use ($template){ $z=new ZipArchive(); $z->open($template); $s=$z->getFromName('word/document.xml'); $z->close(); return $s; })();
+    $dom=new DOMDocument(); $dom->loadXML($xml);
+    $ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
     require '../components/layout.php';
-    ?>
-    <style>
-    .ls-card { max-width:720px; margin:0 auto; background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.07); padding:22px 26px; }
-    .ls-card h6 { border-bottom:2px solid #044482; padding-bottom:8px; margin-bottom:14px; }
-    .ls-row { display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid #eef2f7; font-size:.92rem; }
-    .ls-row .k { color:#64748b; flex:0 0 45%; }
-    .ls-row .v { font-weight:600; text-align:right; }
-    .ls-empty { color:#94a3b8; font-style:italic; }
+    ?><style>
+    .preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:794px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
+    .preview-paper p { margin:0 0 4px; }
+    .pv-docref { display:flex; justify-content:space-between; align-items:baseline; }
+    .pv-docref .pv-docref-left { text-align:left; }
+    .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
+    .pv-opening { clear:both; text-indent:1.27cm; }
+    .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:55px 0 20px !important; }
+    .pv-emblem { text-align:center; margin:0 0 6px; }
+    .pv-emblem img { width:1.5cm; height:auto; }
+    .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
+    .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
+    .pv-actions { max-width:820px; margin:0 auto 16px; }
+    @media print {
+      @page { size: A4; margin: 15mm 17mm; }
+      body { background:#fff !important; }
+      .preview-paper { max-width:100%; border:none; box-shadow:none; border-radius:0; padding:0; margin:0; }
+      .pv-note, .pv-actions, .breadcrumb { display:none !important; }
+      .preview-paper p { break-inside: avoid; }
+    }
     </style>
-    <div class="container-fluid py-3">
-      <div class="ls-card">
-        <h6><i class="fas fa-users text-primary"></i> ໃບຢັ້ງຢືນສາຍຍາດ — ສະຫຼຸບຂໍ້ມູນ (Kinship certificate — data summary)</h6>
-        <div class="ls-row"><span class="k">ເລກທີ່ຄຳຮ້ອງ / Doc no</span><span class="v"><?= htmlspecialchars($row['doc_no']) ?></span></div>
-        <div class="ls-row"><span class="k">ຜູ້ຂໍຢັ້ງຢືນ / Applicant</span><span class="v"><?= htmlspecialchars(trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''))) ?></span></div>
-        <?php if (!$eav): ?>
-          <div class="ls-empty mt-3">ຍັງບໍ່ມີຂໍ້ມູນສະເພາະເອກະສານ (No kinship fields captured yet)</div>
-        <?php else: foreach ($eav as $f): ?>
-          <div class="ls-row"><span class="k"><?= htmlspecialchars($f['field_label']) ?></span><span class="v"><?= htmlspecialchars($f['field_value']) ?></span></div>
-        <?php endforeach; endif; ?>
+    <div class="content-wrapper p-3">
+      <nav class="breadcrumb mb-2">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="list_edoc_document.php">ບໍລິການເອກະສານ</a></li>
+          <li class="breadcrumb-item"><a href="review_edoc_document.php?doc_id=<?= $doc_id ?>">ຈັດການ</a></li>
+          <li class="breadcrumb-item active">ສະແດງຕົວຢ່າງ (Preview)</li>
+        </ol>
+      </nav>
+      <div class="pv-actions text-center">
+        <a class="btn btn-outline-secondary" href="review_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-arrow-left"></i> ກັບຄືນ (Back to review)</a>
+        <button class="btn btn-outline-primary ms-2" onclick="window.print()"><i class="fas fa-print"></i> ພິມ (Print)</button>
+        <a class="btn btn-outline-success ms-2" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-file-word"></i> ດາວໂຫລດ Word (Download)</a>
       </div>
+      <div class="pv-note"><i class="fas fa-info-circle"></i> ຕົວຢ່າງສະແດງຕາມແບບຟອມທາງການ (Preview of the official form)</div>
+      <div class="preview-paper">
+    <?php
+    // ── fill the template ──
+    function wRuns($p){ $o=[]; foreach($p->childNodes as $c) if($c->nodeType===XML_ELEMENT_NODE && $c->localName==='r')$o[]=$c; return $o; }
+    function runText($r){ $s=''; foreach($r->childNodes as $c) if($c->localName==='t')$s.=$c->textContent; return $s; }
+    function setRunText($r,$t){ $first=null; foreach($r->childNodes as $c){ if($c->localName==='t'){ if($first===null)$first=$c; else $c->textContent=''; } } if($first!==null)$first->textContent=$t; }
+    function spliceAt($p,$absIdx,$OLen,$NEW){ $runs=wRuns($p); $pos=0;$start=null;$end=null;$ls=0;$le=0; foreach($runs as $i=>$r){ $t=runText($r);$rlen=strlen($t); if($start===null && $pos+$rlen>$absIdx){$start=$i;$ls=$absIdx-$pos;} if($pos+$rlen>=$absIdx+$OLen){$end=$i;$le=$absIdx+$OLen-$pos;break;} $pos+=$rlen; } if($start===null)return false; if($start===$end){ $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW.substr($t,$le)); } else { $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW); for($i=$start+1;$i<$end;$i++)setRunText($runs[$i],''); $te=runText($runs[$end]); setRunText($runs[$end],substr($te,$le)); } return true; }
+    function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $idx=strpos($full,$OLD); if($idx===false)return false; return spliceAt($p,$idx,strlen($OLD),$NEW); }
+    function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws){ $ins=(trim(substr($full,$e))==='')?' '.$value:' '.$value.', '; spliceAt($p,$ws,$e-$ws,$ins); } }
+    function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
+    function resolveName($conn, $table, $code) {
+      if ($code === '' || $code === null) return '';
+      $st = $conn->prepare("SELECT name_lo FROM $table WHERE code = ? LIMIT 1");
+      $st->execute([$code]); $n = $st->fetchColumn();
+      return $n !== false ? $n : $code;
+    }
+    $title=($row['gender']==='M')?'ທ້າວ':(($row['gender']==='F')?'ນາງ':''); $today=date('d/m/Y');
+    $applicantName = trim($title . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+    $originName=resolveName($conn,'edoc_country',$row['origin']); $nationalityName=resolveName($conn,'edoc_country',$row['nationality']);
+    $occupationName=resolveName($conn,'edoc_occupation',$row['occupation']);
+    $paras=$dom->getElementsByTagNameNS($ns,'p');
+    $occurrence=[];
+    foreach($paras as $p){
+      $full=''; foreach(wRuns($p) as $r)$full.=runText($r);
+      $trimmed=ltrim($full);
+      // Fill ops (matching generator's item-5 branch)
+      if(strpos($full,'ວັນທີ')!==false && strpos($full,'ຊື່')===false && strpos($full,'ອອກ')===false){
+        fillDots($p,'ວັນທີ',$today);
+      }
+      // P7 applicant: entire name line
+      if(strpos($full,'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດ')!==false){
+        replacePhrase($p,'ຊື່ ແລະ ນາມສະກຸນຂອງເຈົ້າຂອງສິດນໍາໃຊ້ທີ່ດິນ',$applicantName);
+        fillDots($p,'ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob']));
+        fillDots($p,'ສັນຊາດ',$nationalityName);
+        fillDots($p,'ອາຊີບ',$occupationName);
+        fillDots($p,'ມີບັດປະຈຳຕົວເລກທີ',$row['id_card']);
+        fillDots($p,'ລົງວັນທີ',fmtDate($row['id_card_issue_date']));
+        fillDots($p,'ອອກໃຫ້ໂດຍ',$eavGet('kin_issued_by'));
+        fillDots($p,'ປະຈຸບັນຢູ່ໜ່ວຍ',$row['unit_no']);
+        fillDots($p,'ບ້ານ',$row['village_name']);
+        fillDots($p,'ເມືອງ',$row['district_name'] ?? '');
+        fillDots($p,'ແຂວງ',$row['province_name'] ?? '');
+      }
+      // P9/P16 father (own/spouse) — occurrence-aware
+      if(strpos($full,'ຊື່ພໍ່')!==false && strpos($full,'ຊື່ແມ່')===false){
+        $i=$occurrence['father']??0;
+        $names=[$eavGet('father_name'),$eavGet('sp_father_name')];
+        $ages=[$eavGet('father_age'),$eavGet('sp_father_age')];
+        $occs=[$eavGet('father_occupation'),$eavGet('sp_father_occupation')];
+        $vils=[$eavGet('father_village'),$eavGet('sp_father_village')];
+        if(isset($names[$i])){
+          fillDots($p,'ຊື່ພໍ່',$names[$i]); fillDots($p,'ອາຍຸ',$ages[$i]);
+          fillDots($p,'ອາຊີບ',$occs[$i]); fillDots($p,'ບ້ານ',$vils[$i]);
+        }
+        $occurrence['father']=($i+1);
+      }
+      // P10/P17 mother (own/spouse) — occurrence-aware
+      if(strpos($full,'ຊື່ແມ່')!==false){
+        $i=$occurrence['mother']??0;
+        $names=[$eavGet('mother_name'),$eavGet('sp_mother_name')];
+        $ages=[$eavGet('mother_age'),$eavGet('sp_mother_age')];
+        $occs=[$eavGet('mother_occupation'),$eavGet('sp_mother_occupation')];
+        $vils=[$eavGet('mother_village'),$eavGet('sp_mother_village')];
+        if(isset($names[$i])){
+          fillDots($p,'ຊື່ແມ່',$names[$i]); fillDots($p,'ອາຍຸ',$ages[$i]);
+          fillDots($p,'ອາຊີບ',$occs[$i]); fillDots($p,'ບ້ານ',$vils[$i]);
+        }
+        $occurrence['mother']=($i+1);
+      }
+      // P11-P13 siblings (own) — occurrence-aware 0,1,2
+      // P18-P20 siblings (spouse) — occurrence-aware 3,4,5
+      if(strpos($full,'ຊື່.')!==false || strpos($full,'ຊື່')!==false && $full!=='' && strpos($full,'ຊື່ພໍ່')===false && strpos($full,'ຊື່ແມ່')===false && strpos($full,'ຊື່ ແລະ')===false){
+        $i=$occurrence['sibling']??0;
+        $own=[
+          [['sib1_name','sib1_age','sib1_occupation','sib1_village'],['sib2_name','sib2_age','sib2_occupation','sib2_village'],['sib3_name','sib3_age','sib3_occupation','sib3_village']],
+          [['spr1_name','spr1_age','spr1_occupation','spr1_village'],['spr2_name','spr2_age','spr2_occupation','spr2_village'],['spr3_name','spr3_age','spr3_occupation','spr3_village']]
+        ];
+        $set=$i<3?0:1; $idx=$i%3;
+        if(isset($own[$set][$idx])){
+          $f=$own[$set][$idx];
+          $val=$eavGet($f[0]);
+          if($val!==''){ fillDots($p,'ຊື່',$val); fillDots($p,'ອາຍຸ',$eavGet($f[1])); fillDots($p,'ອາຊີບ',$eavGet($f[2])); fillDots($p,'ບ້ານ',$eavGet($f[3])); }
+        }
+        $occurrence['sibling']=($i+1);
+      }
+      // P14 spouse
+      if(strpos($full,'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ')!==false){
+        fillDots($p,'ຊື່ ແລະ ນາມສະກຸນຂອງຜົວ ຫຼື ເມຍ',$eavGet('spouse_name'));
+        fillDots($p,'ວັນ,ເດືອນ,ປີເກີດ',$eavGet('spouse_dob')?fmtDate($eavGet('spouse_dob')):'');
+        fillDots($p,'ສັນຊາດ',$eavGet('spouse_nationality'));
+        fillDots($p,'ອາຊີບ',$eavGet('spouse_occupation'));
+        fillDots($p,'ໜ່ວຍ',$eavGet('spouse_unit'));
+        fillDots($p,'ບ້ານ',$eavGet('spouse_village'));
+        fillDots($p,'ເມືອງ',$eavGet('spouse_district'));
+        fillDots($p,'ແຂວງ',$eavGet('spouse_province'));
+      }
+      // P22-P24 children
+      if(strpos($full,'5./')!==false || strpos($full,'5./ ຊື່')!==false) {} // skip header
+      else if(strpos($full,'ຊື່')!==false && strpos($full,'ອາຍຸ')!==false && strpos($full,':')===false){
+        $i=$occurrence['child']??0;
+        $cnames=['child1_name','child2_name','child3_name'];
+        $cages=['child1_age','child2_age','child3_age'];
+        $coccs=['child1_occupation','child1_occupation','child1_occupation'];
+        if(isset($cnames[$i])){
+          $val=$eavGet($cnames[$i]);
+          if($val!=='') fillDots($p,'ຊື່',$val); fillDots($p,'ອາຍຸ',$eavGet($cages[$i])); fillDots($p,'ອາຊີບ',$eavGet($coccs[$i]));
+        }
+        $occurrence['child']=($i+1);
+      }
+      // signature block
+      if(strpos($full,'ຕາງໜ້າ')!==false){
+        // replace ສີວິໄລ with actual taseng name
+        $taseng=$row['taseng_name']??'';
+        if($taseng!==''){ $tasengR=preg_replace('/^ຕາແສງ/u','',$taseng); replacePhrase($p,'ສີວິໄລ',trim($tasengR)); }
+      }
+    }
+    // ── extract emblem ──
+    $emblemB64='';
+    $tmpE=tempnam(sys_get_temp_dir(),'emblem').'.png';
+    $ze=new ZipArchive(); if($ze->open($template)===true){ $img=$ze->getFromName('word/media/image1.png'); $ze->close(); if($img!==false)$emblemB64=base64_encode($img); }
+    @unlink($tmpE);
+    // ── render as HTML ──
+    $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
+    $htmlParas=[]; $imgFound=false;
+    foreach($paras as $p){
+      $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
+      $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
+      $hasEmblem= (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
+      if($hasEmblem)$imgFound=true;
+      $t=preg_replace('/\s{2,}/',' ',$text); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
+      $rt='normal';
+      if($hasEmblem){ $rt='emblem'; }
+      else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
+      else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
+      $htmlParas[]=['text'=>$text,'rt'=>$rt];
+    }
+    foreach($htmlParas as $hp){
+      if($hp['rt']==='skip')continue;
+            if($hp['rt']==='emblem'&&$emblemB64!==''){ echo '<div class="pv-emblem"><img src="data:image/png;base64,'.$emblemB64.'" alt="ກາແຫ່ງຊາດ"></div>'; }
+            else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; }
+            else if($hp['rt']==='sign'){ echo '<p class="pv-sign">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; }
+      else if(trim($hp['text'])===''){ echo '<div style="height:16px">&nbsp;</div>'; }
+      else{ echo '<p>'.nl2br(htmlspecialchars($hp['text'])).'</p>'; }
+    }
+    ?>
+      </div><!-- .preview-paper -->
     </div>
     <?php require '../components/layout_footer.php'; ?>
     <?php exit; ?>
