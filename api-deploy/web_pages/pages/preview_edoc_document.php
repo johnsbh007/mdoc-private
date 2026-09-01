@@ -257,16 +257,28 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     // ── render as HTML ──
     $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
     $htmlParas=[]; $imgFound=false;
+    $num = 0;  // Initialize paragraph number
     foreach($paras as $p){
       $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
       $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
       $hasEmblem= (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
       if($hasEmblem)$imgFound=true;
-      $t=preg_replace('/\s{2,}/',' ',$text); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
+
+      // Remove dots placeholder in the text (............)
+      $t=preg_replace('/\.{6,}/','',$text);
+      $t=preg_replace('/\s{2,}/',' ',$t); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
+      
       $rt='normal';
       if($hasEmblem){ $rt='emblem'; }
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
       else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
+
+      // Add numbering prefix only for normal text paragraphs
+      if ($rt === 'normal') {
+        $num++;
+        $t = "$num. $t";
+      }
+
       // per-paragraph indent + alignment from DOCX w:ind and w:jc
       $style='';
       $in=$xpath->query('.//w:ind',$p)->item(0);
