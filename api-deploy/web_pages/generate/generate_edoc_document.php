@@ -42,6 +42,21 @@ $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);
 $res = $rs->fetch(PDO::FETCH_ASSOC);
+// fallback: if legacy table missing father/mother, read from EAV
+$eavRes = [];
+if ($res && (empty($res['father_name']) || empty($res['mother_name']))) {
+    $ev = $conn->prepare("SELECT f.field_name, fd.field_value
+                          FROM edoc_form_data fd
+                          JOIN edoc_doc_field f ON f.id = fd.field_id
+                          WHERE fd.doc_id = ? AND f.field_name IN ('father_name','mother_name')");
+    $ev->execute([$doc_id]);
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if (!empty($r['field_value'])) $eavRes[$r['field_name']] = $r['field_value'];
+    }
+}
+if ($res===false) $res = [];
+if (empty($res['father_name']) && !empty($eavRes['father_name'])) $res['father_name'] = $eavRes['father_name'];
+if (empty($res['mother_name']) && !empty($eavRes['mother_name'])) $res['mother_name'] = $eavRes['mother_name'];
 
 // ── generic EAV field values (edoc_form_data joined to field names) ──
 $eav = [];

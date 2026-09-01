@@ -553,6 +553,20 @@ $res = null;
 $rs = $conn->prepare("SELECT * FROM edoc_dc_residence WHERE doc_id = ?");
 $rs->execute([$doc_id]);
 $res = $rs->fetch(PDO::FETCH_ASSOC) ?: [];
+// fallback: if legacy table is empty or missing father/mother, read from EAV
+$eavFallback = [];
+if (empty($res['father_name']) || empty($res['mother_name'])) {
+    $ev = $conn->prepare("SELECT f.field_name, fd.field_value
+                          FROM edoc_form_data fd
+                          JOIN edoc_doc_field f ON f.id = fd.field_id
+                          WHERE fd.doc_id = ? AND f.field_name IN ('father_name','mother_name')");
+    $ev->execute([$doc_id]);
+    foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $eavFallback[$r['field_name']] = $r['field_value'];
+    }
+}
+if (empty($res['father_name']) && !empty($eavFallback['father_name'])) $res['father_name'] = $eavFallback['father_name'];
+if (empty($res['mother_name']) && !empty($eavFallback['mother_name'])) $res['mother_name'] = $eavFallback['mother_name'];
 
 // ── resolve codes → Lao names ────────────────────────────────────────
 function resolveName($conn, $table, $code) {

@@ -228,8 +228,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $docType->execute([$doc_item_id]);
         $doc_type_id = (int)$docType->fetchColumn();
         if ($doc_type_id === 1 && $doc_item_id == 1) {
-            $fieldset = $conn->prepare("SELECT id, field_name FROM edoc_doc_field WHERE doc_type_id=1");
-            $fieldset->execute();
+            $fieldset = $conn->prepare("SELECT id, field_name FROM edoc_doc_field WHERE doc_type_id=1 AND (doc_item_id = ? OR doc_item_id IS NULL)");
+            $fieldset->execute([$doc_item_id]);
             $vals = [];
             foreach ($fieldset->fetchAll(PDO::FETCH_ASSOC) as $f) {
                 $vals[$f['field_name']] = trim((string)($_POST['field_' . $f['id']] ?? ''));
