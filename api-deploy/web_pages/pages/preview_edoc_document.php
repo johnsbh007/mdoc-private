@@ -263,9 +263,12 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
       $hasEmblem= (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
       if($hasEmblem)$imgFound=true;
+      
+      // Increment independent numbering sequence
+      $num++;
 
-      // Remove dots placeholder in the text (............)
-      $t=preg_replace('/\.{6,}/','',$text);
+      // Remove dots placeholder AFTER content replaces numbering
+      $t=preg_replace('/\.{6,}/','', $text);
       $t=preg_replace('/\s{2,}/',' ',$t); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
       
       $rt='normal';
@@ -273,11 +276,8 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
       else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
 
-      // Add numbering prefix only for normal text paragraphs
-      if ($rt === 'normal') {
-        $num++;
-        $t = "$num. $t";
-      }
+      // Inject numbering as prefix for non-special paragraphs
+      if (in_array($rt,['emblem','title','sign'],true)===false) $t = "$num. $t";
 
       // per-paragraph indent + alignment from DOCX w:ind and w:jc
       $style='';
@@ -289,7 +289,7 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       }
       if($align==='center')$style.='text-align:center;';
       else if($align==='right')$style.='text-align:right;';
-      $htmlParas[]=['text'=>$text,'rt'=>$rt,'style'=>$style];
+      $htmlParas[]=['text'=>$t,'rt'=>$rt,'style'=>$style];
     }
     // ── emit as HTML, skipping the blank paragraphs between emblem↔country
     // and the single blank before the title (P05) so only one blank line remains ──
