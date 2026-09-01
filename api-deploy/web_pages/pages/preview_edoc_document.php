@@ -135,19 +135,9 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       <div class="preview-paper">
     <?php
     // ── fill the template ──
-    function wRuns($p){ $o=[]; foreach($p->childNodes as $c) if($c->nodeType===XML_ELEMENT_NODE && $c->localName==='r')$o[]=$c; return $o; }
-    function runText($r){ $s=''; foreach($r->childNodes as $c) if($c->localName==='t')$s.=$c->textContent; return $s; }
-    function setRunText($r,$t){ $first=null; foreach($r->childNodes as $c){ if($c->localName==='t'){ if($first===null)$first=$c; else $c->textContent=''; } } if($first!==null)$first->textContent=$t; }
-    function spliceAt($p,$absIdx,$OLen,$NEW){ $runs=wRuns($p); $pos=0;$start=null;$end=null;$ls=0;$le=0; foreach($runs as $i=>$r){ $t=runText($r);$rlen=strlen($t); if($start===null && $pos+$rlen>$absIdx){$start=$i;$ls=$absIdx-$pos;} if($pos+$rlen>=$absIdx+$OLen){$end=$i;$le=$absIdx+$OLen-$pos;break;} $pos+=$rlen; } if($start===null)return false; if($start===$end){ $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW.substr($t,$le)); } else { $t=runText($runs[$start]); setRunText($runs[$start],substr($t,0,$ls).$NEW); for($i=$start+1;$i<$end;$i++)setRunText($runs[$i],''); $te=runText($runs[$end]); setRunText($runs[$end],substr($te,$le)); } return true; }
-    function replacePhrase($p,$OLD,$NEW){ $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $idx=strpos($full,$OLD); if($idx===false)return false; return spliceAt($p,$idx,strlen($OLD),$NEW); }
-    function fillDots($p,$label,$value){ if($value==='')return; $full=''; foreach(wRuns($p) as $r)$full.=runText($r); $pos=strpos($full,$label); if($pos===false)return; $len=strlen($full); $ws=$pos+strlen($label); while($ws<$len && $full[$ws]===' ')$ws++; $e=$ws; while($e<$len && $full[$e]==='.')$e++; if($e>$ws){ $ins=(trim(substr($full,$e))==='')?' '.$value:' '.$value.', '; spliceAt($p,$ws,$e-$ws,$ins); } }
-    function fmtDate($v) { return $v ? date('d/m/Y', strtotime($v)) : ''; }
-    function resolveName($conn, $table, $code) {
-      if ($code === '' || $code === null) return '';
-      $st = $conn->prepare("SELECT name_lo FROM $table WHERE code = ? LIMIT 1");
-      $st->execute([$code]); $n = $st->fetchColumn();
-      return $n !== false ? $n : $code;
-    }
+    // NOTE: wRuns/runText/setRunText/spliceAt/replacePhrase/fillDots/fmtDate/resolveName
+    // are declared top-level later in this file (residence fall-through, ~line 740+)
+    // and PHP hoists top-level functions — redeclaring them here would fatal.
     $title=($row['gender']==='M')?'ທ້າວ':(($row['gender']==='F')?'ນາງ':''); $today=date('d/m/Y');
     $applicantName = trim($title . ' ' . $row['first_name'] . ' ' . $row['last_name']);
     $originName=resolveName($conn,'edoc_country',$row['origin']); $nationalityName=resolveName($conn,'edoc_country',$row['nationality']);
