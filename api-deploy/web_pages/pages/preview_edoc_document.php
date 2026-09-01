@@ -104,7 +104,7 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     .pv-docref .pv-docref-left { text-align:left; }
     .pv-docref .pv-docref-right { text-align:right; white-space:nowrap; font-weight:600; }
     .pv-opening { clear:both; text-indent:1.27cm; }
-    .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:55px 0 20px !important; }
+    .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:16px 0 20px !important; }
     .pv-emblem { text-align:center; margin:0 0 6px; }
     .pv-emblem img { width:1.5cm; height:auto; }
     .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
@@ -267,15 +267,33 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       if($hasEmblem){ $rt='emblem'; }
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
       else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
-      $htmlParas[]=['text'=>$text,'rt'=>$rt];
+      // per-paragraph indent + alignment from DOCX w:ind and w:jc
+      $style='';
+      $in=$xpath->query('.//w:ind',$p)->item(0);
+      if($in){
+        $fl=(int)$in->getAttribute('w:firstLine'); $lf=(int)$in->getAttribute('w:left'); $hg=(int)$in->getAttribute('w:hanging');
+        if($lf){ $style.='padding-left:'.($lf/20).'pt;'; if($hg)$style.='text-indent:-'.($hg/20).'pt;'; }
+        if($fl && !$hg) $style.='text-indent:'.($fl/20).'pt;';
+      }
+      if($align==='center')$style.='text-align:center;';
+      else if($align==='right')$style.='text-align:right;';
+      $htmlParas[]=['text'=>$text,'rt'=>$rt,'style'=>$style];
     }
-    foreach($htmlParas as $hp){
+    // ── emit as HTML, skipping the blank paragraphs between emblem↔country
+    // and the single blank before the title (P05) so only one blank line remains ──
+    $seenText=false;
+    for($i=0;$i<count($htmlParas);$i++){
+      $hp=$htmlParas[$i];
       if($hp['rt']==='skip')continue;
-            if($hp['rt']==='emblem'&&$emblemB64!==''){ echo '<div class="pv-emblem"><img src="data:image/png;base64,'.$emblemB64.'" alt="ກາແຫ່ງຊາດ"></div>'; }
-            else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; }
-            else if($hp['rt']==='sign'){ echo '<p class="pv-sign">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; }
-      else if(trim($hp['text'])===''){ echo '<div style="height:16px">&nbsp;</div>'; }
-      else{ echo '<p>'.nl2br(htmlspecialchars($hp['text'])).'</p>'; }
+      if($hp['rt']==='emblem'&&$emblemB64!==''){ echo '<div class="pv-emblem"><img src="data:image/png;base64,'.$emblemB64.'" alt="ກາແຫ່ງຊາດ"></div>'; }
+      else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; $seenText=true; }
+      else if($hp['rt']==='sign'){ echo '<p class="pv-sign">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; $seenText=true; }
+      else if(trim($hp['text'])===''){
+        $nextRt = $htmlParas[$i+1]['rt'] ?? '';
+        // skip blank between emblem and first text (P01-P02) and before title (P05)
+        if($seenText && $nextRt!=='title'){ echo '<div style="height:16px">&nbsp;</div>'; }
+      }
+      else{ echo '<p style="'.$hp['style'].'">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; $seenText=true; }
     }
     ?>
       </div><!-- .preview-paper -->
