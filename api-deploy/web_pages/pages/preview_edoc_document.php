@@ -254,38 +254,54 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     $tmpE=tempnam(sys_get_temp_dir(),'emblem').'.png';
     $ze=new ZipArchive(); if($ze->open($template)===true){ $img=$ze->getFromName('word/media/image1.png'); $ze->close(); if($img!==false)$emblemB64=base64_encode($img); }
     @unlink($tmpE);
+    // ── load numbering.xml once: map numId → lvl0 indent (left/hanging twips) ──
+    $numIndent=[];
+    $ze2=new ZipArchive(); if($ze2->open($template)===true){ $nxml=$ze2->getFromName('word/numbering.xml'); $ze2->close();
+      if($nxml!==false){ $nd=new DOMDocument(); @$nd->loadXML($nxml); $nx=new DOMXPath($nd); $nx->registerNamespace('w',$ns);
+        $num2abs=[];
+        foreach($nx->query('//w:num') as $n){ $id=(int)$n->getAttribute('w:numId'); $a=$nx->query('.//w:abstractNumId',$n)->item(0); if($a)$num2abs[$id]=(int)$a->getAttribute('w:val'); }
+        $absInd=[];
+        foreach($nx->query('//w:abstractNum') as $a){ $id=(int)$a->getAttribute('w:abstractNumId'); $lvl=$nx->query('./w:lvl',$a)->item(0); if(!$lvl)continue;
+          $pPr=$nx->query('./w:pPr',$lvl)->item(0); $ie=$pPr?$nx->query('./w:ind',$pPr)->item(0):null;
+          $absInd[$id]=['left'=>$ie?(int)$ie->getAttribute('w:left'):0,'hang'=>$ie?(int)$ie->getAttribute('w:hanging'):0];
+        }
+        foreach($num2abs as $nid=>$aid) if(isset($absInd[$aid]))$numIndent[$nid]=$absInd[$aid];
+      }
+    }
     // ── render as HTML ──
     $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
     $htmlParas=[]; $imgFound=false;
-    $num = 0;  // Initialize paragraph number
+    $numCnt=[]; // per-numId running counter for Word auto-numbering (lvlText='%1.')
     foreach($paras as $p){
       $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
       $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
       $hasEmblem= (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
       if($hasEmblem)$imgFound=true;
-      
-      // Increment independent numbering sequence
-      $num++;
-
-      // Remove dots placeholder AFTER content replaces numbering
-      $t=preg_replace('/\.{6,}/','', $text);
-      $t=preg_replace('/\s{2,}/',' ',$t); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
-      
+      $numPrNode=$xpath->query('.//w:numPr',$p)->item(0);
+      $numId=0; if($numPrNode){ $nn=$xpath->query('.//w:numId',$numPrNode)->item(0); $numId=$nn?(int)$nn->getAttribute('w:val'):0; }
+      // Word auto-number prefix (exact template numbering: each numId restarts at 1)
+      $numPrefix='';
+      if($numId>0 && isset($numIndent[$numId])){ $numCnt[$numId]=($numCnt[$numId]??0)+1; $numPrefix=$numCnt[$numId].'. '; }
+      // clean: dots are fill placeholders → ", "; literal numbers (3., 4./, 5./, 6./) keep their single dot
+      $t=preg_replace('/\s*\.{4,}\s*/u', ', ', $text);
+      $t=preg_replace('/\s{2,}/',' ',$t); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/\s+,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
       $rt='normal';
       if($hasEmblem){ $rt='emblem'; }
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
       else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
-
-      // Inject numbering as prefix for non-special paragraphs
-      if (in_array($rt,['emblem','title','sign'],true)===false) $t = "$num. $t";
-
-      // per-paragraph indent + alignment from DOCX w:ind and w:jc
+      if($rt==='normal' && $numPrefix!=='') $t=$numPrefix.$t;
+      // per-paragraph indent + alignment: explicit w:ind wins; else numPr level indent
       $style='';
       $in=$xpath->query('.//w:ind',$p)->item(0);
       if($in){
         $fl=(int)$in->getAttribute('w:firstLine'); $lf=(int)$in->getAttribute('w:left'); $hg=(int)$in->getAttribute('w:hanging');
         if($lf){ $style.='padding-left:'.($lf/20).'pt;'; if($hg)$style.='text-indent:-'.($hg/20).'pt;'; }
         if($fl && !$hg) $style.='text-indent:'.($fl/20).'pt;';
+      }
+      else if($numId>0 && isset($numIndent[$numId])){
+        $L=$numIndent[$numId]['left']; $H=$numIndent[$numId]['hang'];
+        if($L){ $style.='padding-left:'.($L/20).'pt;'; }
+        if($H){ $style.='text-indent:-'.($H/20).'pt;'; }
       }
       if($align==='center')$style.='text-align:center;';
       else if($align==='right')$style.='text-align:right;';
