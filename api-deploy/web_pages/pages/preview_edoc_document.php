@@ -109,8 +109,11 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     .pv-emblem img { width:1.5cm; height:auto; }
     .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
     .pv-date { text-align:right; margin:20px 0 4px; }
-    .pv-signrow { display:flex; justify-content:space-between; gap:24px; margin:26px 0 0; font-size:14px; }
-    .pv-signcol { flex:1; text-align:center; }
+    .pv-signrow { display:flex; justify-content:space-between; align-items:flex-start; margin:24px 0 0; font-size:14px; }
+    .pv-signcol-left { padding-left:36pt; }
+    .pv-signcol-left .title { text-align:left; margin:0; }
+    .pv-signcol-left .name { text-align:center; margin:0; }
+    .pv-signcol-right { text-align:right; padding-right:36pt; }
     .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
     .pv-actions { max-width:820px; margin:0 auto 16px; }
     @media print {
@@ -339,13 +342,16 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; $seenText=true; }
       // signature header row (P33): two-column layout — LEFT=ຕາງໜ່າ, RIGHT=ລາຍເຊັນຂອງຜູ້ກ່ຽວ
       else if($hp['rt']==='signrow'){
-        echo '<div class="pv-signrow"><div class="pv-signcol">'.nl2br(htmlspecialchars($hp['left']));
-        // consume the next paragraph (P34 ປະທານ) into the LEFT column
+        echo '<div class="pv-signrow">';
+        echo '<div class="pv-signcol-left"><div class="title">'.nl2br(htmlspecialchars($hp['left'])).'</div>';
+        // consume the next paragraph (P34 ປະທານ) as the name line directly under the title
         if(($htmlParas[$i+1]['rt'] ?? '')==='sign'){
-          echo '<br>'.nl2br(htmlspecialchars($htmlParas[$i+1]['text']));
+          echo '<div class="name">'.nl2br(htmlspecialchars($htmlParas[$i+1]['text'])).'</div>';
           $i++;
         }
-        echo '</div><div class="pv-signcol">'.nl2br(htmlspecialchars($hp['right'])).'</div></div>';
+        echo '</div>';
+        echo '<div class="pv-signcol-right">'.nl2br(htmlspecialchars($hp['right'])).'</div>';
+        echo '</div>';
         $seenText=true;
       }
       // date line (P32): right-aligned
