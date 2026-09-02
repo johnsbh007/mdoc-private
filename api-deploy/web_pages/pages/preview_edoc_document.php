@@ -294,8 +294,8 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       $rt='normal';
       if($hasEmblem){ $rt='emblem'; }
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
-      // signature header row (P33): ຕາງໜ່າ... + ລາຍເຊັນຂອງຜູ້ກ່ຽວ — two columns on one line
-      else if(strpos($t,'ຕາງໜ່າ')!==false){ $rt='signrow'; }
+      // signature header row (P33): ຕາງໜ້າ ປະທານ... + ລາຍເຊັນຂອງຜູ້ກ່ຽວ — two columns on one line
+      else if(strpos($t,'ລາຍເຊັນ')!==false){ $rt='signrow'; }
       // ປະທານ (P34): sub-line under the LEFT signature column
       else if($t==='ປະທານ'){ $rt='sign'; }
       // date line (P32): ວັນທີ... right-aligned
