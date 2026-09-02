@@ -108,7 +108,7 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     .pv-emblem { text-align:center; margin:0 0 6px; }
     .pv-emblem img { width:1.5cm; height:auto; }
     .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
-    .pv-date { text-align:right; margin:20px 0 4px; }
+    .pv-date { text-align:right; padding-right:36pt; margin:20px 0 4px; }
     .pv-signrow { display:flex; justify-content:space-between; align-items:flex-start; margin:24px 0 0; font-size:14px; }
     .pv-signcol-left { padding-left:36pt; }
     .pv-signcol-left .title { text-align:left; margin:0; }
