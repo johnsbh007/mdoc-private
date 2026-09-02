@@ -461,7 +461,9 @@ if ((int)$row['doc_type_id'] === 6 && (int)($row['doc_item_id'] ?? 0) === 53) {
     <?php
 }
 
-// ── item 8 (biography ຊີວະປະຫວັດທົ່ວໄປ, doc_type 1): data-summary preview ──
+// ── item 8 (biography ຊີວະປະຫວັດທົ່ວໄປ, doc_type 1) ──
+// template_variant='short' → render 01-08-ປະຫວັດຫຍໍ້.docx as HTML (like kinship).
+// otherwise (full/multi-page form) → keep the data-summary card (tables not built yet).
 if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 8) {
     $bio = [];
     $ev = $conn->prepare("SELECT f.field_name, fd.field_value
@@ -470,22 +472,216 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 8) {
                           WHERE fd.doc_id = ?");
     $ev->execute([$doc_id]);
     foreach ($ev->fetchAll(PDO::FETCH_ASSOC) as $r) { if ($r['field_value'] !== '' && $r['field_value'] !== null) { $bio[$r['field_name']] = $r['field_value']; } }
-    $applicant = trim(($row['title'] ?? '') . ' ' . ($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-    ?>
+    $bioGet = function($k) use ($bio) { return trim((string)($bio[$k] ?? '')); };
+    if (($row['template_variant'] ?? '') === 'short') {
+        // ══ SHORT biography (one-page) — template render ══
+        $template='/var/www/html/edoc/Doc_files/01-08-ປະຫວັດຫຍໍ້.docx';
+        if (!file_exists($template)) { die('Template not found'); }
+        $xml = (function() use ($template){ $z=new ZipArchive(); $z->open($template); $s=$z->getFromName('word/document.xml'); $z->close(); return $s; })();
+        $dom=new DOMDocument(); $dom->loadXML($xml);
+        $ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+        require '../components/layout.php';
+        ?><style>
+        .preview-paper { background:#fff; border:1px solid #ddd; border-radius:8px; box-shadow:0 4px 18px rgba(0,0,0,.09); max-width:794px; margin:0 auto 20px; padding:44px 52px; font-family:'Noto Sans Lao','Phetsarath OT',serif; font-size:15px; line-height:1.9; }
+        .preview-paper p { margin:0 0 4px; }
+        .pv-title { text-align:center; font-weight:bold; font-size:16px; margin:16px 0 20px !important; }
+        .pv-emblem { text-align:center; margin:0 0 6px; }
+        .pv-emblem img { width:1.5cm; height:auto; }
+        .pv-signrow { display:flex; justify-content:space-between; align-items:flex-start; margin:0; font-size:14px; }
+        .pv-signcol-left { padding-left:36pt; }
+        .pv-signcol-left .title { text-align:left; margin:0; }
+        .pv-signcol-left .name { text-align:center; margin:0; }
+        .pv-signcol-right { text-align:right; padding-right:36pt; }
+        .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
+        .pv-actions { max-width:820px; margin:0 auto 16px; }
+        @media print {
+          @page { size: A4; margin: 15mm 17mm; }
+          body { background:#fff !important; }
+          .preview-paper { max-width:100%; border:none; box-shadow:none; border-radius:0; padding:0; margin:0; }
+          .pv-note, .pv-actions, .breadcrumb { display:none !important; }
+          .preview-paper p { break-inside: avoid; }
+        }
+        </style>
+        <div class="content-wrapper p-3">
+          <nav class="breadcrumb mb-2">
+            <ol class="breadcrumb mb-2">
+              <li class="breadcrumb-item"><a href="list_edoc_document.php">ບໍລິການເອກະສານ</a></li>
+              <li class="breadcrumb-item"><a href="review_edoc_document.php?doc_id=<?= $doc_id ?>">ຈັດການ</a></li>
+              <li class="breadcrumb-item active">ສະແດງຕົວຢ່າງ (Preview)</li>
+            </ol>
+          </nav>
+          <div class="pv-actions text-center">
+            <a class="btn btn-outline-secondary" href="review_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-arrow-left"></i> ກັບຄືນ (Back to review)</a>
+            <button class="btn btn-outline-primary ms-2" onclick="window.print()"><i class="fas fa-print"></i> ພິມ (Print)</button>
+            <a class="btn btn-outline-success ms-2" target="_blank" href="../generate/generate_edoc_document.php?doc_id=<?= $doc_id ?>"><i class="fas fa-file-word"></i> ດາວໂຫລດ Word (Download)</a>
+          </div>
+          <div class="pv-note"><i class="fas fa-info-circle"></i> ຕົວຢ່າງສະແດງຕາມແບບຟອມທາງການ — ແບບຟອມສັ້ນ (Short form preview)</div>
+          <div class="preview-paper">
+        <?php
+        $title=($row['gender']==='M')?'ທ້າວ':(($row['gender']==='F')?'ນາງ':''); $today=date('d/m/Y');
+        $bioName = trim($title . ' ' . $row['first_name'] . ' ' . $row['last_name']);
+        $originName=resolveName($conn,'edoc_country',$row['origin']); $nationalityName=resolveName($conn,'edoc_country',$row['nationality']);
+        $ethnicityName=resolveName($conn,'edoc_ethnicity',$row['ethnicity']); $religionName=resolveName($conn,'edoc_religion',$row['religion']);
+        $occupationName=resolveName($conn,'edoc_occupation',$row['occupation']);
+        $birthVillageName=resolveName($conn,'edoc_village',$row['birth_village']);
+        $birthDistrictName=resolveName($conn,'edoc_district',$row['birth_district']);
+        $birthProvinceName=resolveName($conn,'edoc_province',$row['birth_province']);
+        $ageOf = function($dob) { return $dob ? floor((time() - strtotime($dob)) / 31536000) : ''; };
+        $paras=$dom->getElementsByTagNameNS($ns,'p');
+        $occurrence=[];
+        foreach($paras as $p){
+          $full=''; foreach(wRuns($p) as $r)$full.=runText($r);
+          $trimmed=ltrim($full);
+          // 1) self name line (P6) + father (P14) + mother (P15) — all start ຊື່ ແລະ ນາມສະກຸນ
+          if(strpos($trimmed,'ຊື່ ແລະ ນາມສະກຸນ')===0){
+            $i=$occurrence['name']??0; $occurrence['name']=$i+1;
+            if($i===0){ // self
+              fillDots($p,'ຊື່ ແລະ ນາມສະກຸນ:',$bioName);
+              fillDots($p,'ວັນ,ເດືອນ,ປີເກີດ',fmtDate($row['dob']));
+              fillDots($p,'ບ້ານເກີດ',$birthVillageName);
+              fillDots($p,'ເມືອງ',$birthDistrictName);
+              fillDots($p,'ແຂວງ',$birthProvinceName);
+              fillDots($p,'ເຊື້ອຊາດ',$originName);
+              fillDots($p,'ສັນຊາດ',$nationalityName);
+            } else if($i===1){ // father
+              fillDots($p,'ຊື່ ແລະ ນາມສະກຸນພໍ່ :',$bioGet('bio_father_name'));
+              fillDots($p,'ອາຍຸ',$ageOf($bioGet('bio_father_dob')));
+              fillDots($p,'ສັນຊາດ',$bioGet('bio_father_nat'));
+              fillDots($p,'ເຊື້ອຊາດ',$bioGet('bio_father_eth'));
+              fillDots($p,'ອາຊີບ',$bioGet('bio_father_job'));
+              fillDots($p,'ປະຈຸບັນຢູ່ບ້ານ',$bioGet('bio_father_village'));
+              fillDots($p,'ເມືອງ',$bioGet('bio_father_district'));
+              fillDots($p,'ແຂວງ',$bioGet('bio_father_province'));
+            } else { // mother
+              fillDots($p,'ຊື່ ແລະ ນາມສະກຸນແມ່: :',$bioGet('bio_mother_name'));
+              fillDots($p,'ອາຍຸ',$ageOf($bioGet('bio_mother_dob')));
+              fillDots($p,'ສັນຊາດ',$bioGet('bio_mother_nat'));
+              fillDots($p,'ເຊື້ອຊາດ',$bioGet('bio_mother_eth'));
+              fillDots($p,'ອາຊີບ',$bioGet('bio_mother_job'));
+              fillDots($p,'ປະຈຸບັນຢູ່ບ້ານ',$bioGet('bio_mother_village'));
+              fillDots($p,'ເມືອງ',$bioGet('bio_mother_district'));
+              fillDots($p,'ແຂວງ',$bioGet('bio_mother_province'));
+            }
+          }
+          // 2) self second paragraph (P7): ethnicity ... province
+          else if(strpos($trimmed,'ຊົນເຜົ່າ')===0){
+            fillDots($p,'ຊົນເຜົ່າ',$ethnicityName);
+            fillDots($p,'ສາສະໜາ',$religionName);
+            fillDots($p,'ສຳມະໂນຄົວເລກທີ',$bioGet('bio_family_book_no'));
+            fillDots($p,'ລົງວັນທີ',fmtDate($bioGet('bio_family_book_date')));
+            fillDots($p,'ບັດປະຈຳຕົວເລກທີ',$row['id_card']);
+            fillDots($p,'ລະດັບການສຶກສາ',$bioGet('bio_educ_upper'));
+            fillDots($p,'ລະດັບວິຊາສະເພາະ',$bioGet('bio_special'));
+            fillDots($p,'ອາຊີບປະຈຸບັນ',$occupationName);
+            fillDots($p,'ບ່ອນປະຈຳການ',$bioGet('bio_workplace'));
+            fillDots($p,'ໜ້າທີ່ຮັບຜິດຊອບ',$bioGet('bio_position'));
+            fillDots($p,'ວັນ/ເດືອນ/ປີສັງກັດລັດ',fmtDate($bioGet('bio_party_date')));
+            fillDots($p,'ປະຈຸບັນຢູ່ບ້ານ',$row['village_name']);
+            fillDots($p,'ເມືອງ',$row['district_name'] ?? '');
+            fillDots($p,'ແຂວງ',$row['province_name'] ?? '');
+          }
+          // 3) signature place + date (P24)
+          else if(strpos($trimmed,'ທີ່')===0 && strpos($full,'ວັນທີ')!==false){
+            fillDots($p,'ທີ່',$row['province_name'] ?? '');
+            fillDots($p,'ວັນທີ',$today);
+          }
+        }
+        // ── render as HTML (mirrors kinship: emblem / title / signrow / date / numbered paragraphs) ──
+        $emblemB64='';
+        $ze=new ZipArchive(); if($ze->open($template)===true){
+          $img=$ze->getFromName('word/media/image1.png'); if($img===false)$img=$ze->getFromName('word/media/image1.jpeg'); if($img===false)$img=$ze->getFromName('word/media/image1.jpg');
+          $ze->close(); if($img!==false)$emblemB64=base64_encode($img);
+        }
+        $xpath=new DOMXPath($dom); $xpath->registerNamespace('w',$ns);
+        $htmlParas=[]; $imgFound=false;
+        $numCnt=[];
+        foreach($paras as $p){
+          $text=''; foreach($xpath->query('.//w:t',$p) as $t)$text.=$t->textContent;
+          $jc=$xpath->query('.//w:jc',$p)->item(0); $align=$jc?$jc->getAttribute('w:val'):'both';
+          $hasEmblem= (!$imgFound) && ($xpath->query('.//*[local-name()="drawing"]',$p)->length>0 || $xpath->query('.//*[local-name()="pict"]',$p)->length>0);
+          if($hasEmblem)$imgFound=true;
+          $numPrNode=$xpath->query('.//w:numPr',$p)->item(0);
+          $numId=0; if($numPrNode){ $nn=$xpath->query('.//w:numId',$numPrNode)->item(0); $numId=$nn?(int)$nn->getAttribute('w:val'):0; }
+          $numPrefix='';
+          if($numId>0){ $numCnt[$numId]=($numCnt[$numId]??0)+1; $numPrefix=$numCnt[$numId].'. '; }
+          // dots are fill placeholders → ", "; literal section numbers keep single dot
+          $t=preg_replace('/\s*\.{4,}\s*/u', ', ', $text);
+          $t=preg_replace('/\s{2,}/',' ',$t); $t=preg_replace('/,\s*,/',',',$t); $t=preg_replace('/\s+,/',',',$t); $t=preg_replace('/,\s+$/','',$t); $t=preg_replace('/^\s+/','',$t);
+          $rt='normal';
+          if($hasEmblem){ $rt='emblem'; }
+          else if($t==='ຊີວະປະຫວັດຫຍໍ້'){ $rt='title'; }
+          else if(strpos($t,'ລາຍເຊັນ')!==false){ $rt='signrow'; }
+          else if($t==='ປະທານ'){ $rt='sign'; }
+          if($rt==='normal' && $numPrefix!=='') $t=$numPrefix.$t;
+          $sigLeft=''; $sigRight='';
+          if($rt==='signrow'){
+            $parts=preg_split('/\s{4,}/u', $text, 2);
+            $sigLeft=trim(preg_replace('/\s+/u',' ', $parts[0]??''));
+            $sigRight=trim(preg_replace('/\s+/u',' ', $parts[1]??''));
+            $sigLeft=preg_replace('/\s*\.{4,}\s*/u',', ',$sigLeft);
+            $sigRight=preg_replace('/\s*\.{4,}\s*/u',', ',$sigRight);
+          }
+          $style='';
+          $in=$xpath->query('.//w:ind',$p)->item(0);
+          if($in){
+            $fl=(int)$in->getAttribute('w:firstLine'); $lf=(int)$in->getAttribute('w:left'); $hg=(int)$in->getAttribute('w:hanging');
+            if($lf){ $style.='padding-left:'.($lf/20).'pt;'; if($hg)$style.='text-indent:-'.($hg/20).'pt;'; }
+            if($fl && !$hg) $style.='text-indent:'.(min($fl,567)/20).'pt;';
+          }
+          if($align==='center')$style.='text-align:center;';
+          else if($align==='right')$style.='text-align:right;';
+          $htmlParas[]=['text'=>$t,'rt'=>$rt,'style'=>$style,'left'=>$sigLeft,'right'=>$sigRight];
+        }
+        $seenText=false;
+        for($i=0;$i<count($htmlParas);$i++){
+          $hp=$htmlParas[$i];
+          if($hp['rt']==='skip')continue;
+          if($hp['rt']==='emblem'&&$emblemB64!==''){ echo '<div class="pv-emblem"><img src="data:image/png;base64,'.$emblemB64.'" alt="ກາແຫ່ງຊາດ"></div>'; }
+          else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; $seenText=true; }
+          else if($hp['rt']==='signrow'){
+            echo '<div class="pv-signrow">';
+            echo '<div class="pv-signcol-left"><div class="title">'.nl2br(htmlspecialchars($hp['left'])).'</div>';
+            if(($htmlParas[$i+1]['rt'] ?? '')==='sign'){
+              echo '<div class="name">'.nl2br(htmlspecialchars($htmlParas[$i+1]['text'])).'</div>';
+              $i++;
+            }
+            echo '</div>';
+            echo '<div class="pv-signcol-right">'.nl2br(htmlspecialchars($hp['right'])).'</div>';
+            echo '</div>';
+            $seenText=true;
+          }
+          else if($hp['rt']==='sign'){ echo '<p class="pv-sign">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; $seenText=true; }
+          else if(trim($hp['text'])===''){
+            $nextRt = $htmlParas[$i+1]['rt'] ?? '';
+            if($seenText && $nextRt!=='title'){ echo '<div style="height:16px">&nbsp;</div>'; }
+          }
+          else{ echo '<p style="'.$hp['style'].'">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; $seenText=true; }
+        }
+        ?>
+          </div><!-- .preview-paper -->
+        </div>
+        <?php require '../components/layout_footer.php'; ?>
+        <?php exit; ?>
+        <?php
+    } else {
+        // ══ FULL / multi-page form — data-summary card (tables not built yet) ══
+        $applicant = trim(($row['title'] ?? '') . ' ' . ($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+        ?>
     <div class="container-fluid"><div class="card"><div class="card-body">
-        <h5 class="mb-3">ຊີວະປະຫວັດທົ່ວໄປ (Biography)</h5>
+        <h5 class="mb-3">ຊີວະປະຫວັດທົ່ວໄປ (Biography) — ແບບຟອມເຕັມ (Full form)</h5>
         <div class="ls-row"><span class="k">ຜູ້ຍື່ນ (Applicant)</span><span class="v"><?= htmlspecialchars($applicant) ?></span></div>
-        <div class="ls-row"><span class="k">ພໍ່ (Father)</span><span class="v"><?= htmlspecialchars($bio['bio_father_name'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ແມ່ (Mother)</span><span class="v"><?= htmlspecialchars($bio['bio_mother_name'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ຜົວ/ເມຍ (Spouse)</span><span class="v"><?= htmlspecialchars($bio['bio_spouse_name'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ອາຊີບ (Workplace)</span><span class="v"><?= htmlspecialchars($bio['bio_workplace'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ໜ້າທີ່ (Position)</span><span class="v"><?= htmlspecialchars($bio['bio_position'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ລູກ (Children)</span><span class="v"><?= htmlspecialchars($bio['bio_children_count'] ?? '') ?></span></div>
-        <div class="ls-row"><span class="k">ສຸຂະພາບ (Health)</span><span class="v"><?= htmlspecialchars($bio['bio_health'] ?? '') ?></span></div>
+        <div class="ls-row"><span class="k">ພໍ່ (Father)</span><span class="v"><?= htmlspecialchars($bioGet('bio_father_name')) ?></span></div>
+        <div class="ls-row"><span class="k">ແມ່ (Mother)</span><span class="v"><?= htmlspecialchars($bioGet('bio_mother_name')) ?></span></div>
+        <div class="ls-row"><span class="k">ຜົວ/ເມຍ (Spouse)</span><span class="v"><?= htmlspecialchars($bioGet('bio_spouse_name')) ?></span></div>
+        <div class="ls-row"><span class="k">ອາຊີບ (Workplace)</span><span class="v"><?= htmlspecialchars($bioGet('bio_workplace')) ?></span></div>
+        <div class="ls-row"><span class="k">ໜ້າທີ່ (Position)</span><span class="v"><?= htmlspecialchars($bioGet('bio_position')) ?></span></div>
+        <div class="ls-row"><span class="k">ລູກ (Children)</span><span class="v"><?= htmlspecialchars($bioGet('bio_children_count')) ?></span></div>
+        <div class="ls-row"><span class="k">ສຸຂະພາບ (Health)</span><span class="v"><?= htmlspecialchars($bioGet('bio_health')) ?></span></div>
     </div></div></div>
     <?php require '../components/layout_footer.php'; ?>
     <?php exit; ?>
     <?php
+    }
 }
 
 // ── item 30 (lease contract ໃບສັນຍາເຊົ່າທີ່ດິນ ແລະ ເຮືອນ, doc_type 6): data-summary preview ──
