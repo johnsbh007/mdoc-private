@@ -314,7 +314,11 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       if($in){
         $fl=(int)$in->getAttribute('w:firstLine'); $lf=(int)$in->getAttribute('w:left'); $hg=(int)$in->getAttribute('w:hanging');
         if($lf){ $style.='padding-left:'.($lf/20).'pt;'; if($hg)$style.='text-indent:-'.($hg/20).'pt;'; }
-        if($fl && !$hg) $style.='text-indent:'.(min($fl,567)/20).'pt;';
+        if($fl && !$hg){
+          // P30 ຊອບພຽງ and P31 ໝາຍເຫດ: should have no indent (user request)
+          if(strpos($t,'ຊອບພຽງ')!==0 && strpos($t,'ໝາຍເຫດ:')!==0)
+            $style.='text-indent:'.(min($fl,567)/20).'pt;';
+        }
       }
       else if($numId>0 && isset($numIndent[$numId])){
         $L=$numIndent[$numId]['left']; $H=$numIndent[$numId]['hang'];
