@@ -108,6 +108,9 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
     .pv-emblem { text-align:center; margin:0 0 6px; }
     .pv-emblem img { width:1.5cm; height:auto; }
     .pv-sign { margin:20px 0 0 50% !important; text-align:center; font-size:14px; }
+    .pv-date { text-align:right; margin:20px 0 4px; }
+    .pv-signrow { display:flex; justify-content:space-between; gap:24px; margin:26px 0 0; font-size:14px; }
+    .pv-signcol { flex:1; text-align:center; }
     .pv-note { background:#fff8e1; border:1px solid #eed99a; color:#8a6d00; border-radius:8px; padding:10px 16px; max-width:820px; margin:0 auto 14px; font-size:.9rem; }
     .pv-actions { max-width:820px; margin:0 auto 16px; }
     @media print {
@@ -288,15 +291,30 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       $rt='normal';
       if($hasEmblem){ $rt='emblem'; }
       else if($t==='ໃບຢັ້ງຢືນສາຍຍາດ'){ $rt='title'; }
-      else if(strpos($t,'ຕາງໜ້າ')!==false || $t==='ປະທານ'){ $rt='sign'; }
+      // signature header row (P33): ຕາງໜ່າ... + ລາຍເຊັນຂອງຜູ້ກ່ຽວ — two columns on one line
+      else if(strpos($t,'ຕາງໜ່າ')!==false){ $rt='signrow'; }
+      // ປະທານ (P34): sub-line under the LEFT signature column
+      else if($t==='ປະທານ'){ $rt='sign'; }
+      // date line (P32): ວັນທີ... right-aligned
+      else if(strpos($t,'ວັນທີ')===0){ $rt='date'; }
       if($rt==='normal' && $numPrefix!=='') $t=$numPrefix.$t;
+      // split the signature row into LEFT (ຕາງໜ່າ...) / RIGHT (ລາຍເຊັນ...) columns
+      $sigLeft=''; $sigRight='';
+      if($rt==='signrow'){
+        $parts=preg_split('/\s{4,}/u', $text, 2);
+        $sigLeft=trim(preg_replace('/\s+/u',' ', $parts[0]??''));
+        $sigRight=trim(preg_replace('/\s+/u',' ', $parts[1]??''));
+        $sigLeft=preg_replace('/\s*\.{4,}\s*/u',', ',$sigLeft);
+        $sigRight=preg_replace('/\s*\.{4,}\s*/u',', ',$sigRight);
+      }
       // per-paragraph indent + alignment: explicit w:ind wins; else numPr level indent
+      // cap first-line indent at 567 twips (1 tab) so the closing statement fits on one line
       $style='';
       $in=$xpath->query('.//w:ind',$p)->item(0);
       if($in){
         $fl=(int)$in->getAttribute('w:firstLine'); $lf=(int)$in->getAttribute('w:left'); $hg=(int)$in->getAttribute('w:hanging');
         if($lf){ $style.='padding-left:'.($lf/20).'pt;'; if($hg)$style.='text-indent:-'.($hg/20).'pt;'; }
-        if($fl && !$hg) $style.='text-indent:'.($fl/20).'pt;';
+        if($fl && !$hg) $style.='text-indent:'.(min($fl,567)/20).'pt;';
       }
       else if($numId>0 && isset($numIndent[$numId])){
         $L=$numIndent[$numId]['left']; $H=$numIndent[$numId]['hang'];
@@ -305,7 +323,7 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       }
       if($align==='center')$style.='text-align:center;';
       else if($align==='right')$style.='text-align:right;';
-      $htmlParas[]=['text'=>$t,'rt'=>$rt,'style'=>$style];
+      $htmlParas[]=['text'=>$t,'rt'=>$rt,'style'=>$style,'left'=>$sigLeft,'right'=>$sigRight];
     }
     // ── emit as HTML, skipping the blank paragraphs between emblem↔country
     // and the single blank before the title (P05) so only one blank line remains ──
@@ -315,6 +333,20 @@ if ((int)$row['doc_type_id'] === 1 && (int)($row['doc_item_id'] ?? 0) === 5) {
       if($hp['rt']==='skip')continue;
       if($hp['rt']==='emblem'&&$emblemB64!==''){ echo '<div class="pv-emblem"><img src="data:image/png;base64,'.$emblemB64.'" alt="ກາແຫ່ງຊາດ"></div>'; }
       else if($hp['rt']==='title'){ echo '<p class="pv-title">'.htmlspecialchars($hp['text']).'</p>'; $seenText=true; }
+      // signature header row (P33): two-column layout — LEFT=ຕາງໜ່າ, RIGHT=ລາຍເຊັນຂອງຜູ້ກ່ຽວ
+      else if($hp['rt']==='signrow'){
+        echo '<div class="pv-signrow"><div class="pv-signcol">'.nl2br(htmlspecialchars($hp['left']));
+        // consume the next paragraph (P34 ປະທານ) into the LEFT column
+        if(($htmlParas[$i+1]['rt'] ?? '')==='sign'){
+          echo '<br>'.nl2br(htmlspecialchars($htmlParas[$i+1]['text']));
+          $i++;
+        }
+        echo '</div><div class="pv-signcol">'.nl2br(htmlspecialchars($hp['right'])).'</div></div>';
+        $seenText=true;
+      }
+      // date line (P32): right-aligned
+      else if($hp['rt']==='date'){ echo '<p class="pv-date">'.htmlspecialchars($hp['text']).'</p>'; $seenText=true; }
+      // orphaned ປະທານ (should be consumed by signrow, but fallback)
       else if($hp['rt']==='sign'){ echo '<p class="pv-sign">'.nl2br(htmlspecialchars($hp['text'])).'</p>'; $seenText=true; }
       else if(trim($hp['text'])===''){
         $nextRt = $htmlParas[$i+1]['rt'] ?? '';
