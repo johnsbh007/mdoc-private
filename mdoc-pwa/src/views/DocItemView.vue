@@ -9,6 +9,9 @@ const router = useRouter()
 const item = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const implementedItemIds = [
+  1, 4, 5, 8, 20, 28, 30, 52, 53, 54, 55, 56, 57, 58,
+]
 
 onMounted(async () => {
   try {
@@ -56,11 +59,19 @@ function fmt(n) {
         </div>
 
         <RouterLink
-          :to="{ name: 'apply', params: { itemId: item.id } }"
-          class="mt-6 block rounded-lg bg-teal-700 py-3 text-center text-sm font-semibold text-white"
-        >
-          ຂໍເອກະສານນີ້
-        </RouterLink>
+          v-if="implementedItemIds.includes(Number(item.id))"
+  :to="{ name: 'apply', params: { itemId: item.id } }"
+  class="mt-6 block rounded-lg bg-teal-700 py-3 text-center text-sm font-semibold text-white"
+>
+  ຂໍເອກະສານນີ້
+</RouterLink>
+
+<p
+  v-else
+  class="mt-6 rounded-lg bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-800"
+>
+  ກຳລັງພັດທະນາ
+</p>
       </template>
     </div>
   </AppShell>

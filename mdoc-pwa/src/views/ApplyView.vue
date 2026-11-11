@@ -13,6 +13,7 @@ const formData = ref({})
 const loading = ref(true)
 const submitting = ref(false)
 const error = ref(null)
+const fieldErrors = ref({})
 
 const HIERARCHY_KEY = 'mdoc_hierarchy_cache'
 const hierarchy = ref({ provinces: [], districts: [], tassengs: [], villages: [] })
@@ -28,7 +29,10 @@ onMounted(async () => {
       api(`doc-items/${route.params.itemId}/fields`),
     ])
     item.value = itemData
-    fields.value = fieldData
+    fields.value = fieldData.map((field) => ({
+  ...field,
+  field_type: String(field.field_type ?? '').trim().toLowerCase(),
+}))
     // Prefill defaults
     for (const f of fieldData) formData.value[f.field_name] = ''
   } catch (e) {
@@ -61,6 +65,7 @@ function filteredVillages() {
 
 async function onSubmit() {
   error.value = null
+  fieldErrors.value = {}
   submitting.value = true
   try {
     const res = await api('documents', {
@@ -71,8 +76,12 @@ async function onSubmit() {
         form_data: formData.value,
       },
     })
-    router.push({ name: 'doc-detail', params: { id: res.doc_id } })
+    const docId = res.id ?? res.doc_id
+    await router.push({ name: 'doc-detail', params: { id: docId } })
   } catch (e) {
+    if (e instanceof ApiError && e.code === 'VALIDATION_ERROR') {
+  fieldErrors.value = e.details ?? {}
+}
     error.value = e instanceof ApiError ? e.message : 'ເກີດຂໍ້ຜິດພາດ'
   } finally {
     submitting.value = false
@@ -117,6 +126,9 @@ async function onSubmit() {
             v-model="formData[f.field_name]"
             class="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
           />
+           <p v-if="fieldErrors[f.field_name]" class="mt-1 text-xs text-red-600">
+            {{ fieldErrors[f.field_name] }}
+          </p>
         </div>
 
         <!-- Location cascade -->

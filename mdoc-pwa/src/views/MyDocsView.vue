@@ -1,10 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api, { ApiError } from '../api/client'
 import AppShell from '../components/AppShell.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 
 const docs = ref([])
+const selectedStatus = ref('')
+
+const filteredDocs = computed(() =>
+  docs.value.filter((doc) => !selectedStatus.value || doc.status === selectedStatus.value)
+)
 const loading = ref(true)
 const error = ref(null)
 
@@ -36,8 +41,14 @@ function fmtDate(s) {
       <p v-if="loading" class="py-8 text-center text-sm text-slate-400">ກຳລັງໂຫຼດ...</p>
       <p v-if="error" class="py-8 text-center text-sm text-red-600">{{ error }}</p>
       <div v-else class="space-y-3">
+      <label for="status-filter" class="block text-sm">ສະຖານະຄຳຮ້ອງ</label>
+<select id="status-filter" v-model="selectedStatus" class="w-full rounded-lg border p-2">
+  <option value="">ທັງໝົດ</option>
+  <option value="PENDING_APPROVAL">ລໍຖ້າອະນຸມັດ</option>
+  <option value="PAID">ຊຳລະແລ້ວ</option>
+</select>
         <RouterLink
-          v-for="d in docs"
+          v-for="d in filteredDocs"
           :key="d.id"
           :to="{ name: 'doc-detail', params: { id: d.id } }"
           class="block rounded-xl border border-slate-200 bg-white p-4"
@@ -46,12 +57,18 @@ function fmtDate(s) {
             <div class="text-sm font-semibold text-slate-800">{{ d.doc_no }}</div>
             <StatusBadge :status="d.status" />
           </div>
-          <div class="mt-1 text-sm text-slate-500">{{ d.doc_item_name }}</div>
+          <div class="mt-1 text-sm text-slate-500">{{ d.item_name ?? d.doc_item_name }}</div>
           <div class="mt-2 flex items-center justify-between text-xs text-slate-400">
-            <span>{{ fmtDate(d.submitted_at) }}</span>
+            <span>{{ fmtDate(d.created_at ?? d.submitted_at) }}</span>
             <span>{{ Number(d.amount || 0).toLocaleString('lo-LA') }} ກີບ</span>
           </div>
         </RouterLink>
+        <p
+  v-if="!loading && docs.length > 0 && filteredDocs.length === 0"
+  class="py-8 text-center text-sm text-slate-400"
+>
+  ບໍ່ພົບຄຳຮ້ອງໃນສະຖານະນີ້
+</p>
         <p v-if="!docs.length && !loading" class="py-8 text-center text-sm text-slate-400">
           ຍັງບໍ່ມີຄຳຮ້ອງ —
           <RouterLink to="/catalog" class="text-teal-700">ຂໍເອກະສານໃໝ່</RouterLink>

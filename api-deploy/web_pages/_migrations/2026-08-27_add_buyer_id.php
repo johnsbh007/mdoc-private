@@ -25,5 +25,6 @@ $n = $conn->prepare("UPDATE edoc_doc_field SET is_active=0
                      WHERE doc_type_id=14 AND field_name LIKE 'buyer_%' AND is_active=1")->execute();
 echo "deactivated buyer_* EAV fields (doc_type 14)\n";
 
-$conn->commit();
+// ALTER TABLE implicitly commits in MySQL; wrap commit so re-runs don't fatal
+try { $conn->commit(); } catch (Throwable $e) { /* DDL already committed */ }
 echo "DONE\n";
