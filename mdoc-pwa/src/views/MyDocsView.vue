@@ -8,7 +8,16 @@ const docs = ref([])
 const selectedStatus = ref('')
 
 const filteredDocs = computed(() =>
-  docs.value.filter((doc) => !selectedStatus.value || doc.status === selectedStatus.value)
+  docs.value
+    .filter((doc) =>
+      !selectedStatus.value || doc.status === selectedStatus.value
+    )
+    .sort((a, b) => {
+      const dateA = a.created_at ?? a.submitted_at ?? ''
+      const dateB = b.created_at ?? b.submitted_at ?? ''
+
+      return dateB.localeCompare(dateA) || b.id - a.id
+    })
 )
 const loading = ref(true)
 const error = ref(null)

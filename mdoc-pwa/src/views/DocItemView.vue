@@ -15,7 +15,15 @@ const implementedItemIds = [
 
 onMounted(async () => {
   try {
-    item.value = await api(`doc-items/${route.params.id}`)
+    const [itemData, fieldData] = await Promise.all([
+  api(`doc-items/${route.params.id}`),
+  api(`doc-items/${route.params.id}/fields`),
+])
+
+item.value = {
+  ...itemData,
+  fields: fieldData,
+}
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'ເກີດຂໍ້ຜິດພາດ'
   } finally {

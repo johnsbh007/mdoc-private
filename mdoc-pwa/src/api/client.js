@@ -23,7 +23,8 @@ export function setTokenProvider(fn) {
   tokenProvider = fn
 }
 
-export async function api(path, { method = 'GET', body = null, headers = {} } = {}) {
+export async function api(path, { method = 'GET', body = null, headers = {},
+  responseType = 'auto', } = {}) {
   const token = tokenProvider()
   const isFormData = body instanceof FormData
 
@@ -78,6 +79,9 @@ export async function api(path, { method = 'GET', body = null, headers = {} } = 
 
   // 204 or empty body
   if (res.status === 204) return null
+
+  if (responseType === 'blob') return res.blob()
+    
   const ct = res.headers.get('content-type') || ''
   return ct.includes('application/json') ? res.json() : res.text()
 }

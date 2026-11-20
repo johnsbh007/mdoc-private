@@ -6,13 +6,16 @@ const props = defineProps({
 })
 
 const STATUS_META = {
+  DRAFT: { label: 'ແບບຮ່າງ', cls: 'bg-slate-100 text-slate-700' },
   SUBMITTED: { label: 'ລໍຖ້າອະນຸມັດ', cls: 'bg-amber-100 text-amber-700' }, // legacy: merged into PENDING_APPROVAL
   PENDING_APPROVAL: { label: 'ລໍຖ້າອະນຸມັດ', cls: 'bg-amber-100 text-amber-700' },
+  ISSUED: { label: 'ອອກເອກະສານແລ້ວ', cls: 'bg-blue-100 text-blue-700' },
   PENDING_PAYMENT: { label: 'ລໍຖ້າຊຳລະ', cls: 'bg-orange-100 text-orange-700' },
   PAID: { label: 'ຊຳລະແລ້ວ', cls: 'bg-teal-100 text-teal-700' },
   SIGNED: { label: 'ລົງນາມແລ້ວ', cls: 'bg-indigo-100 text-indigo-700' },
   HANDOVER: { label: 'ພ້ອມຮັບເອກະສານ', cls: 'bg-green-100 text-green-700' },
   DOWNLOADED: { label: 'ດາວໂຫຼດແລ້ວ', cls: 'bg-slate-100 text-slate-700' },
+  NEEDS_REVISION: { label: 'ຕ້ອງແກ້ໄຂຂໍ້ມູນ', cls: 'bg-yellow-100 text-yellow-800' },
   REJECTED: { label: 'ຖືກປະຕິເສດ', cls: 'bg-red-100 text-red-700' },
   CANCELED: { label: 'ຍົກເລີກ', cls: 'bg-slate-100 text-slate-500' },
 }

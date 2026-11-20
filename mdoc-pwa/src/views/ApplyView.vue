@@ -14,6 +14,9 @@ const loading = ref(true)
 const submitting = ref(false)
 const error = ref(null)
 const fieldErrors = ref({})
+const implementedItemIds = [
+  1, 4, 5, 8, 20, 28, 30, 52, 53, 54, 55, 56, 57, 58,
+]
 
 const HIERARCHY_KEY = 'mdoc_hierarchy_cache'
 const hierarchy = ref({ provinces: [], districts: [], tassengs: [], villages: [] })
@@ -23,6 +26,11 @@ const selTasseng = ref(null)
 const villageId = ref(null)
 
 onMounted(async () => {
+    if (!implementedItemIds.includes(Number(route.params.itemId))) {
+    error.value = 'ກຳລັງພັດທະນາ'
+    loading.value = false
+    return
+  }
   try {
     const [itemData, fieldData] = await Promise.all([
       api(`doc-items/${route.params.itemId}`),
@@ -64,6 +72,10 @@ function filteredVillages() {
 }
 
 async function onSubmit() {
+    if (!implementedItemIds.includes(Number(route.params.itemId))) {
+    error.value = 'ກຳລັງພັດທະນາ'
+    return
+  }
   error.value = null
   fieldErrors.value = {}
   submitting.value = true
@@ -156,7 +168,7 @@ async function onSubmit() {
 
         <div class="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3">
           <span class="text-sm text-slate-600">ຄ່າບໍລິການ</span>
-          <span class="text-base font-bold text-teal-700">{{ Number(item.price || 0).toLocaleString('lo-LA') }} ກີບ</span>
+          <span class="text-base font-bold text-teal-700">{{ (item.price ?? 0).toLocaleString('lo-LA') }} ກີບ</span>
         </div>
 
         <button
